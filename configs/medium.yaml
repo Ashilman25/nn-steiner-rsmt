@@ -1,0 +1,15 @@
+# Medium run on the authors' default data sizes: 1200 train / 96 val / 32 test.
+# Data paths, batch sizes, and 10 epochs all come from the authors' conf/config.yaml.
+#
+# Make the data first (each set needs its own size so they don't overwrite each other):
+#   scripts/arora.sh medium 'flow=[data_gen]'
+#   scripts/arora.sh medium 'flow=[data_gen]' data_gen.seed=5200 data_gen.num_trees=3 data_gen.batch=96
+#   scripts/arora.sh medium 'flow=[data_gen]' data_gen.seed=6200 data_gen.num_trees=1 data_gen.batch=32
+# Then train:
+#   caffeinate -i scripts/arora.sh medium
+defaults:
+  - config
+  - _self_
+
+flow:
+  - train
