@@ -1,0 +1,81 @@
+diff --git a/arora/flow/dataGen.py b/arora/flow/dataGen.py
+index 32816bd..ebbaea6 100644
+--- a/arora/flow/dataGen.py
++++ b/arora/flow/dataGen.py
+@@ -33,6 +33,12 @@ from .utils import (
+     get_quadtreedata_like,
+ )
+ 
++# GeoSteiner (built without CPLEX) can stall forever on rare point sets.
++# If no sample finishes for this long, stuck samples are redone with new points.
++STALL_SECONDS: int = 120
++MAX_ATTEMPTS: int = 5
++RETRY_SEED_OFFSET: int = 10_000_000
++
+ 
+ def make_name(data_args: Dict) -> str:
+     num_points: int = data_args["num_points"]
+@@ -124,11 +130,11 @@ def worker(
+     quadtree_args: Dict,
+     output_dir: str,
+     tree: QuadTree | None,
+-) -> int:
+-    # point generation
+-    point_gen: PointGen = get_pointGen(
+-        data_args["dist"], data_args, idx + data_args["seed"]
+-    )
++    attempt: int = 0,
++) -> Tuple[int, int]:
++    # point generation (a retry after a stall gets a fresh point set)
++    seed: int = idx + data_args["seed"] + attempt * RETRY_SEED_OFFSET
++    point_gen: PointGen = get_pointGen(data_args["dist"], data_args, seed)
+     points: List[Tuple[int, int]] = point_gen.get_points(data_args["num_points"])
+ 
+     # make struct quadtree
+@@ -145,7 +151,12 @@ def worker(
+         dump_file(points, data_args, quadtree_args, file_name, tree)
+     else:
+         dump_file(points, data_args, quadtree_args, file_name)
+-    return len(points)
++    return (idx, len(points))
++
++
++# Unpacks one task tuple for Pool.imap_unordered
++def worker_task(task: Tuple) -> Tuple[int, int]:
++    return worker(*task)
+ 
+ 
+ def get_dir_type(data_type: str) -> str:
+@@ -221,8 +232,30 @@ def output_files(
+         for i in tqdm(range(data_args["batch"]))
+     ]
+ 
+-    with mp.Pool() as pool:
+-        points_num: List[int] = pool.starmap(worker, tqdm(worker_list))
++    # leaving the pool terminates any worker still stuck in GeoSteiner
++    points_num: List[int] = []
++    todo: List[Tuple] = worker_list
++    for attempt in range(MAX_ATTEMPTS):
++        done: Set[int] = set()
++        with mp.Pool() as pool:
++            results = pool.imap_unordered(
++                worker_task, [(*task, attempt) for task in todo]
++            )
++            try:
++                for _ in tqdm(range(len(todo))):
++                    (idx, num) = results.next(timeout=STALL_SECONDS)
++                    done.add(idx)
++                    points_num.append(num)
++            except mp.TimeoutError:
++                pass
++        todo = [task for task in todo if task[0] not in done]
++        if len(todo) == 0:
++            break
++        logger.warning(
++            f"GeoSteiner stalled on samples {[task[0] for task in todo]}, "
++            "redoing them with new points"
++        )
++    assert len(todo) == 0, f"still stalled: {[task[0] for task in todo]}"
+ 
+     # debug
+     # rets: List[Tuple[QuadTree, Dict[str, Tensor] | None]] = []
