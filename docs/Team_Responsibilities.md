@@ -108,7 +108,7 @@ Everyone should be able to run the code themselves, not just the person who buil
 
 2. **Check inference with the pretrained model**
    - Run `scripts/get_pretrained.sh`, then `scripts/arora.sh pretrained_solve` (one 100-point case). Add `solve.plot=true` to get pictures.
-   - Find out which reported cost corresponds to the paper's numbers. On test case #1, `flow=eval` reports a *processed* cost of 75,621, which matches the authors' recorded result (75,641; optimum 73,838), and a *final* cost of 78,541.
+   - Check whether we reproduce the authors' results. `final_cost` is the model's real result. On test case #1 we get 78,541 vs their recorded 75,641 (optimum 73,838). Compare across all 100 test cases with `flow=nn_exp` and `evaluator/evaluateRatio.py`.
    - Tell Shraddha once this works, so the evaluation pipeline can be built on the pretrained model while training is still in progress.
 
 3. **Smoke-test training**
@@ -137,7 +137,7 @@ Everyone should be able to run the code themselves, not just the person who buil
 ### Deliverables
 - [ ] Architecture summary and diagram
 - [x] Pretrained model running with `scripts/arora.sh pretrained_solve` (unblocks Shraddha) (needs push + tell Shraddha)
-- [x] Training smoke test passing on temporary data (Mac ✅, Colab pending)
+- [x] Training smoke test passing on temporary data (Mac done, Colab done)
 - [ ] Our trained `m=15, kb=4` model and its training curves
 - [ ] 2–3 experiment comparisons, with models and configs
 - [ ] Model and training section draft for the report
