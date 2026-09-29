@@ -1,0 +1,30 @@
+# Data-scaling study: same model and settings, different amounts of training data.
+# train_set and epochs change per run, so they go on the command line.
+#
+# Make the data (train seed is far from val/test so samples never share points):
+#   scripts/arora.sh scale 'flow=[data_gen]' data_gen.seed=5200 data_gen.num_trees=4 data_gen.batch=128
+#   scripts/arora.sh scale 'flow=[data_gen]' data_gen.seed=6200 data_gen.num_trees=2 data_gen.batch=64
+#   scripts/arora.sh scale 'flow=[data_gen]' data_gen.seed=100000 data_gen.num_trees=24 data_gen.batch=1200
+#   (and num_trees=240 batch=12000, num_trees=720 batch=36000)
+# Train:
+#   caffeinate -i scripts/arora.sh scale train.train_set=data/batch24_100x100-uniform-1200-tensor train.epochs=200
+# Score on the 100 test cases:
+#   scripts/arora.sh scale 'flow=[nn_exp]' nn_exp.model=outputs/<date>/<time>/train/model/nnArora.pt nn_exp.output=exp_out/scale-1200
+defaults:
+  - config
+  - _self_
+
+flow:
+  - train
+
+train:
+  val_set: data/batch4_100x100-uniform-128-tensor
+  test_set: data/batch2_100x100-uniform-64-tensor
+  batch_size: 50        # must equal samples per tree shape
+  val_batch_size: 32
+  test_batch_size: 32
+  eval: 2               # check validation every 2 epochs
+  max_no_update: 5      # stop after 5 checks (10 epochs) with no new best
+
+nn_exp:
+  test_set: upstream/points/point100_10000x10000-uniform-100-pt/

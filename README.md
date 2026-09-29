@@ -51,5 +51,6 @@ scripts/arora.sh smoke 'flow=[train]' train.epochs=10 train.lr=3e-4
 | `0001-rmst-include-cstddef` | RMST doesn't compile on newer GCC (Colab) without `<cstddef>` |
 | `0002-single-device-training` | Upstream training requires 2+ NVIDIA GPUs. With the patch it also runs on 1 GPU (Colab), Apple MPS, or CPU; checkpoints load without CUDA |
 | `0003-rmst-64bit-and-clang-fixes` | RMST stored pointers in 32-bit `int`s (unsafe on 64-bit machines), and a missing `<stdlib.h>` broke the clang build |
+| `0004-restore-leaf-refinement` | The authors' final commit left a cleanup step (`refine_leaves`) switched off, which is one of their ablations. Turning it back on reproduces their reported results |
 
 GeoSteiner is built without CPLEX (the authors used CPLEX). It still solves exactly, but solve times will differ from the paper.

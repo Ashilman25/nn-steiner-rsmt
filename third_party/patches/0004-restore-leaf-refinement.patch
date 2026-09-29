@@ -1,0 +1,13 @@
+diff --git a/arora/quadtree/steinerTree.py b/arora/quadtree/steinerTree.py
+index 0e6e7a0..358494b 100644
+--- a/arora/quadtree/steinerTree.py
++++ b/arora/quadtree/steinerTree.py
+@@ -475,7 +475,7 @@ class SteinerTree:
+         """
+         self.trim()
+         self.round()
+-        # self.refine_leaves(k, fst)
++        self.refine_leaves(k, fst)
+         self.trim()
+ 
+     def trim(self) -> None:
