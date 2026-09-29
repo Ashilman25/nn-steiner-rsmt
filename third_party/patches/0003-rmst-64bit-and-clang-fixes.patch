@@ -1,0 +1,94 @@
+diff --git a/arora/quadtree/rmst/include/err.c b/arora/quadtree/rmst/include/err.c
+index 50f53cb..59cb4ff 100644
+--- a/arora/quadtree/rmst/include/err.c
++++ b/arora/quadtree/rmst/include/err.c
+@@ -1,4 +1,5 @@
+ #include <stdio.h>
++#include <stdlib.h>
+ 
+ /**************************************************************************/
+ /*
+diff --git a/arora/quadtree/rmst/include/sd2.c b/arora/quadtree/rmst/include/sd2.c
+index 14f545f..5eb600c 100644
+--- a/arora/quadtree/rmst/include/sd2.c
++++ b/arora/quadtree/rmst/include/sd2.c
+@@ -60,6 +60,7 @@
+  
+ */
+ 
++#include <stdint.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ //#include <malloc.h>
+@@ -109,7 +110,7 @@ struct xytree {
+    };
+  
+ struct search_item {
+-    int addr;
++    intptr_t addr;
+     int is_list;
+     } ;
+  
+@@ -163,7 +164,7 @@ struct search_cntxt
+             else num = MIDDLE; \
+         } }
+  
+-#define ADD_ITEM(t,a,b) {(++t)->addr = (int)(a); t->is_list = (b);}
++#define ADD_ITEM(t,a,b) {(++t)->addr = (intptr_t)(a); t->is_list = (b);}
+  
+ //****************************************************************
+ //****************************************************************
+@@ -542,7 +543,7 @@ void free_xytree_32(XYBASE *b)
+         }
+ }
+  
+-#define RETURN_LL {*what = TRUE; return (int)ll;}
++#define RETURN_LL {*what = TRUE; return (intptr_t)ll;}
+ /* this routine does the dirty work of rebalancing the tree.  It is
+  not directly callable by the user.  It is given a linked list of items
+  starting with TL.
+@@ -550,7 +551,7 @@ void free_xytree_32(XYBASE *b)
+  pointer to the first item in the list.  If the result should be a tree,
+  it mallocs the node, and returns a pointer to it with what = FALSE;
+  */
+-static int rebalance_xytree_guts(XYBASE *tb, XYITEM *tl, char *what)
++static intptr_t rebalance_xytree_guts(XYBASE *tb, XYITEM *tl, char *what)
+ {
+     int x1=MAXINT, y1 = MAXINT, x2 = MININT, y2 = MININT;
+     int n = 0;          /* number of items in linked list */
+@@ -636,7 +637,7 @@ static int rebalance_xytree_guts(XYBASE *tb, XYITEM *tl, char *what)
+         b->ptr[i].xy = (XYTREE *)rebalance_xytree_guts(tb, 
+         b->ptr[i].al, &(b->is_list[i]));
+     *what = FALSE;
+-    return (int)b;
++    return (intptr_t)b;
+ }
+  
+ /* take the tree pointed to by T, and add it to the linked list at ll */
+@@ -685,7 +686,7 @@ void rebalance_xytree_32(XYBASE *b)
+ {
+     XYITEM *ll = NULL;
+     char what;
+-    int temp;
++    intptr_t temp;
+     /* first, turn the tree into a linked list */
+     Tree_to_linked_list(b->root, &ll);
+     /* then free the tree structures */
+@@ -774,7 +775,7 @@ DB_get_next_xyitem_32(XYITEM **ptr)
+                 if (!DISJOINT(sx1,sy1,sx2,sy2,l) )
+                 {
+                     *ptr = l;
+-                    tos->addr = (int)(l->next);
++                    tos->addr = (intptr_t)(l->next);
+                     return TRUE;
+                 }
+          /* nothing in this list. decrement stack and try again */
+@@ -791,7 +792,7 @@ void DB_set_xytree_search_box_32(XYBASE *b ,int x1,int y1,int x2,int y2)
+     FIXORDER(sx1,sx2);
+     FIXORDER(sy1,sy2);
+     tos = search_stack;
+-    tos->addr = (int)(b->root);
++    tos->addr = (intptr_t)(b->root);
+     tos->is_list = FALSE;
+ }
+  

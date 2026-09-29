@@ -1,0 +1,11 @@
+# Downloaded and built by scripts/setup.sh
+third_party/NN-Steiner/
+
+# Everything our runs generate: datasets, checkpoints, logs, results (see README)
+work/
+
+# Local environment
+.venv/
+__pycache__/
+.ipynb_checkpoints/
+.DS_Store

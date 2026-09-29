@@ -1,0 +1,195 @@
+diff --git a/arora/flow/train.py b/arora/flow/train.py
+index 7ed5a03..343fb37 100644
+--- a/arora/flow/train.py
++++ b/arora/flow/train.py
+@@ -58,7 +58,7 @@ def train(args: DictConfig) -> None:
+         ckpt_path: str = os.path.join(
+             hydra.utils.get_original_cwd(), train_args["checkpoint"]
+         )
+-        state_dict: Dict[str, Tensor] = torch.load(ckpt_path)
++        state_dict: Dict[str, Tensor] = torch.load(ckpt_path, map_location="cpu")
+         state_dict = {
+             key.replace("module.", ""): value for key, value in state_dict.items()
+         }
+@@ -72,7 +72,7 @@ def train(args: DictConfig) -> None:
+     # load trained model
+     trained_nn_arora: NNArora = NNArora(args["model"], args["quadtree"])
+     model_path: str = "train/model/nnArora_best.pt"
+-    state_dict: Dict[str, Tensor] = torch.load(model_path)
++    state_dict: Dict[str, Tensor] = torch.load(model_path, map_location="cpu")
+     state_dict = {
+         key.replace("module.", ""): value for key, value in state_dict.items()
+     }
+diff --git a/arora/flow/utils.py b/arora/flow/utils.py
+index 72d502e..25bb50f 100644
+--- a/arora/flow/utils.py
++++ b/arora/flow/utils.py
+@@ -124,7 +124,7 @@ def get_model(args: DictConfig, flow: str) -> NNArora:
+             hydra.utils.get_original_cwd(), args[flow]["model"]
+         )
+     nn_arora: NNArora = NNArora(args["model"], args["quadtree"])
+-    state_dict: Dict[str, Tensor] = torch.load(model_path)
++    state_dict: Dict[str, Tensor] = torch.load(model_path, map_location="cpu")
+     state_dict = {
+         key.replace("module.", ""): value for key, value in state_dict.items()
+     }
+diff --git a/arora/training/trainer.py b/arora/training/trainer.py
+index 97f10bc..883afed 100644
+--- a/arora/training/trainer.py
++++ b/arora/training/trainer.py
+@@ -11,7 +11,7 @@ from torch import Tensor, nn
+ from arora.data import DataLoader
+ from arora.utils import get_f1
+ 
+-from .trainerProcess import TrainerProcess
++from .trainerProcess import TrainerProcess, get_device
+ 
+ 
+ class Trainer:
+@@ -34,10 +34,14 @@ class Trainer:
+         # setup
+         print("setting up")
+         n_gpus: int = torch.cuda.device_count()
+-        assert n_gpus >= 2, f"Requires at least 2 GPUs to run, but got {n_gpus}"
+-        world_size: int = n_gpus
++        # Patched: upstream asserted >= 2 GPUs. Use every GPU if there are
++        # several; otherwise train in this process on 1 GPU, Apple MPS, or CPU.
++        world_size: int = max(n_gpus, 1)
+ 
+-        print("finish setting up")
++        print(f"finish setting up (world_size={world_size}, device={get_device(0)})")
++        if world_size == 1:
++            self.worker(0, world_size, model, train_loader, val_loader, self.args)
++            return
+ 
+         # multiprocessing
+         mp.spawn(  # pyright: ignore
+@@ -65,13 +69,13 @@ class Trainer:
+         # get inputs
+         inputs: Dict[str, Tensor] = copy.copy(test_batch)
+         for key, val in inputs.items():
+-            inputs[key] = val.to("cuda:0")  # pyright: ignore
++            inputs[key] = val.to(get_device(0))  # pyright: ignore
+         golden_tens: Tensor = copy.copy(inputs["golden"])
+         del inputs["golden"]
+ 
+         # forward
+         model.eval()
+-        model = model.to("cuda:0")
++        model = model.to(get_device(0))
+         predict_tens: Tensor = model(**inputs)
+ 
+         assert torch.all(0 <= predict_tens) and torch.all(
+diff --git a/arora/training/trainerProcess.py b/arora/training/trainerProcess.py
+index b6c00b5..209de81 100644
+--- a/arora/training/trainerProcess.py
++++ b/arora/training/trainerProcess.py
+@@ -16,6 +16,15 @@ from arora.data import DataLoader
+ from arora.utils import get_f1
+ 
+ 
++def get_device(rank: int) -> torch.device:
++    # Patched: CUDA GPU if present (upstream behavior), else Apple MPS, else CPU.
++    if torch.cuda.is_available():
++        return torch.device("cuda", rank)
++    if torch.backends.mps.is_available():
++        return torch.device("mps")
++    return torch.device("cpu")
++
++
+ def load_loop(file: str) -> Dict[str, Tensor]:
+     assert isinstance(file, str), file
+     assert len(file) > 0, file
+@@ -44,11 +53,17 @@ class TrainerProcess:
+         self.portal_weight: int = args["portal_weight"]
+         self.best_acc: float = 0.0
+         self.no_update: int = 0
++        # Patched: only use torch.distributed (NCCL + DDP) with several GPUs;
++        # otherwise train in a single plain process.
++        self.distributed: bool = world_size > 1
++        self.device: torch.device = get_device(rank)
+ 
+         # setup
+         self.setup(rank, self.world_size)
+-        model = model.to(rank)
+-        self.ddp_model: DDP = DDP(model, device_ids=[rank])
++        model = model.to(self.device)
++        self.ddp_model: nn.Module = (
++            DDP(model, device_ids=[rank]) if self.distributed else model
++        )
+         self.writer: SummaryWriter = SummaryWriter("train/")
+         self.optimizer: optim.Optimizer = optim.Adam(
+             self.ddp_model.parameters(), lr=args["lr"]
+@@ -58,11 +73,11 @@ class TrainerProcess:
+         if self.rank == 0:
+             print("loading local training data...")
+         train_data: List[Dict[str, Tensor]] = train_loader.load_data(rank, world_size)
+-        dist.barrier()
++        self.barrier()
+         if self.rank == 0:
+             print("loading local valildation data...")
+         val_data: List[Dict[str, Tensor]] = val_loader.load_data(rank, world_size)
+-        dist.barrier()
++        self.barrier()
+ 
+         if self.rank == 0:
+             print("start trainig")
+@@ -105,6 +120,8 @@ class TrainerProcess:
+                 prof.step()
+ 
+     def setup(self, rank: int, world_size: int):
++        if not self.distributed:
++            return
+         os.environ["MASTER_ADDR"] = "localhost"
+         os.environ["MASTER_PORT"] = "12355"
+ 
+@@ -112,7 +129,12 @@ class TrainerProcess:
+         dist.init_process_group("nccl", rank=rank, world_size=world_size)
+ 
+     def cleanup(self):
+-        dist.destroy_process_group()
++        if self.distributed:
++            dist.destroy_process_group()
++
++    def barrier(self):
++        if self.distributed:
++            dist.barrier()
+ 
+     def load_data(self, files: List[List[str]]) -> List[Dict[str, Tensor]]:
+         local_files: List[str] = files[self.rank]
+@@ -134,7 +156,7 @@ class TrainerProcess:
+             # get inputs
+             inputs: Dict[str, Tensor] = copy.copy(batch)
+             for key, val in inputs.items():
+-                inputs[key] = val.to(self.rank)  # pyright: ignore
++                inputs[key] = val.to(self.device)  # pyright: ignore
+             golden_tens: Tensor = copy.copy(inputs["golden"])
+             del inputs["golden"]
+ 
+@@ -193,7 +215,7 @@ class TrainerProcess:
+             # get inputs
+             inputs: Dict[str, Tensor] = copy.copy(batch)
+             for key, val in inputs.items():
+-                inputs[key] = val.to(self.rank)  # pyright: ignore
++                inputs[key] = val.to(self.device)  # pyright: ignore
+             golden_tens: Tensor = copy.copy(inputs["golden"])
+             del inputs["golden"]
+ 
+@@ -234,6 +256,8 @@ class TrainerProcess:
+                 self.no_update += 1
+ 
+     def earlystop(self) -> bool:
++        if not self.distributed:
++            return self.no_update >= self.max_no_update
+         if self.rank == 0:
+             send_tens: Tensor = torch.tensor(self.no_update >= self.max_no_update).to(
+                 self.rank  # pyright: ignore
+@@ -248,6 +272,8 @@ class TrainerProcess:
+             return bool(rec_tens)
+ 
+     def all_reduce(self, scalar: int | float, weight: int | float) -> float:
++        if not self.distributed:
++            return scalar / weight
+         total: Tensor = torch.tensor([scalar, weight], dtype=torch.float32)
+         total = total.to(self.rank)  # pyright: ignore
+         dist.all_reduce(total)

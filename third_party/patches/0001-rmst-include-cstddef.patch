@@ -1,0 +1,16 @@
+diff --git a/arora/quadtree/rmst/rmst.hpp b/arora/quadtree/rmst/rmst.hpp
+index 39ad70f..f567b49 100644
+--- a/arora/quadtree/rmst/rmst.hpp
++++ b/arora/quadtree/rmst/rmst.hpp
+@@ -1,6 +1,7 @@
+ #pragma once
+ #include <vector>
+ #include <tuple>
++#include <cstddef>
+ 
+-std::vector<std::tuple<size_t, size_t>>
+-find_RMST(const std::vector<std::tuple<size_t, size_t>> &points);
+\ No newline at end of file
++std::vector<std::tuple<std::size_t, std::size_t>>
++find_RMST(const std::vector<std::tuple<std::size_t, std::size_t>> &points);
+\ No newline at end of file

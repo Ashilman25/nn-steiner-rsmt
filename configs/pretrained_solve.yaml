@@ -1,0 +1,14 @@
+# Run the authors' pretrained model (m=15, kb=4) on one 100-point test case.
+# Needs scripts/get_pretrained.sh first. Results (and plots, if plot is true)
+# go to work/outputs/<date>/<time>/solve/.
+defaults:
+  - config
+  - _self_
+
+flow:
+  - solve
+
+solve:
+  testcase: upstream/points/point100_10000x10000-uniform-100-pt/point100_10000x10000-uniform-1.txt
+  model: models/pretrained/m15_kb4.pt
+  plot: false
