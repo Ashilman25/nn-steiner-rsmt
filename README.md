@@ -4,6 +4,7 @@ CMPE 257 course project reproducing and extending **NN-Steiner** (Kahng et al., 
 
 - Project plan and roles: [docs/Team_Responsibilities.md](docs/Team_Responsibilities.md)
 - Proposal: [docs/Project_Proposal.md](docs/Project_Proposal.md)
+- Where things stand, results and findings: [docs/Findings.md](docs/Findings.md)
 
 ## Layout
 
