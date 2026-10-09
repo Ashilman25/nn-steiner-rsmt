@@ -9,7 +9,7 @@ The team's running record of the project: where things stand, what each of us ne
 - Background on the paper: [Project_Proposal.md](Project_Proposal.md)
 - Who owns what: [Team_Responsibilities.md](Team_Responsibilities.md)
 
-*Last updated: 2026-10-08 (Andrew)*
+*Last updated: 2026-10-09 (Andrew)*
 
 ---
 
@@ -27,7 +27,7 @@ The team's running record of the project: where things stand, what each of us ne
 - [Compute and hardware](#compute-and-hardware)
 - [Problems in the authors' code (our patches)](#problems-in-the-authors-code-our-patches)
 - [Things that can silently go wrong](#things-that-can-silently-go-wrong)
-- [The data-scaling study (in progress)](#the-data-scaling-study-in-progress)
+- [The data-scaling study (done)](#the-data-scaling-study-done)
 - [What comes next](#what-comes-next)
 - [Our scripts, and what each one does](#our-scripts-and-what-each-one-does)
 - [How to reproduce our numbers](#how-to-reproduce-our-numbers)
@@ -43,9 +43,10 @@ The team's running record of the project: where things stand, what each of us ne
 |---|---|
 | Can everyone run the authors' code? | **Yes.** It takes one setup command on a Mac or on Colab. Their training needed 2+ NVIDIA GPUs; it now runs on 1 GPU, an Apple GPU, or CPU |
 | Is the authors' trained model as good as the paper says? | **Yes.** On the 100 uniform 100-point test problems it scores **2.648%** longer than optimal, vs their published **2.646%**. Getting there needed a fix (patch 0004) |
-| Can we train a model that good ourselves? | **Not yet, but we're getting closer.** Trained on 1,200 examples: **3.77%**. On 12,000: **3.38%**. The authors' model (120,000 examples): **2.65%** |
-| What's running right now? | Training on **36,000** examples, started Oct 8 at 11:43 AM on my Mac. At 8:45 PM it was at epoch 24 of at most 60 |
-| What's next? | Score the 36,000 model and decide whether we need the full 120,000. Then hand the best model to Shraddha and pick 1–2 more experiments |
+| Can we train a model that good ourselves? | **Not yet.** Trained on 1,200 examples: **3.77%**. On 12,000: **3.38%**. On 36,000: **3.38%** again. The authors' model (120,000 examples): **2.65%** |
+| Is more training data the fix? | **No, not anymore.** 1,200 → 12,000 helped; 12,000 → 36,000 changed nothing (a tie, each model wins 50 of 100 problems). So we're skipping the full 120,000 |
+| What's running right now? | Nothing. The data-scaling study is done |
+| What's next? | Find what else differs from the authors' training. Hand our best model to Shraddha. Pick 1–2 more experiments, trained on 12,000 examples (same score as 36,000, a third of the time) |
 
 "% longer than optimal" is the real score: how much more wire our tree uses than the perfect tree from GeoSteiner. Lower is better. 3.38% means: where the perfect tree needs 100 m of wire, ours uses 103.38 m.
 
@@ -64,7 +65,7 @@ The team's running record of the project: where things stand, what each of us ne
 - **Known-good checks for your pipeline:**
   - `scripts/arora.sh pretrained_solve` should print `final_cost: 75641.0`.
   - The authors' model on `upstream/points/point100_10000x10000-uniform-100-pt/` should score **2.648%** against the authors' answer file, `third_party/NN-Steiner/exp_out/100_10000x10000-uniform-golden.txt`. 96 of the 100 lengths match the authors' own result file exactly.
-- **Our own trained model is coming** once the 36,000 run is scored. You'll get the `.pt` file (about 830 MB), its exact settings and its training curves.
+- **Our own trained model is ready** (36,000 examples, 3.38%). I'll share the `.pt` file (about 830 MB), its exact settings and its training curves. It's still 0.74 points behind the authors' model on 100-point problems, so for "does NN-Steiner work" questions, test the authors' model too.
 - **So far I've only tested 100-point uniform problems.** The paper's main claim is that NN-Steiner beats FLUTE at 500+ points. We haven't tested that yet; it's part of your evaluation.
 
 ---
@@ -93,6 +94,8 @@ The team's running record of the project: where things stand, what each of us ne
 
 **Oct 8 (Andrew):** started the 36,000 run.
 
+**Oct 9 (Andrew):** the 36,000 run used all 60 epochs (22 h 23 min) and scored 3.38%, a tie with 12,000. More data stopped helping, so the scaling study is done and we're not making 120,000. Then I scored each run's last checkpoint too: it's 0.14–0.31 points worse than the best one every time, so the checkpoint you score matters.
+
 ---
 
 ## All results in one place
@@ -107,7 +110,7 @@ All scores are on the same exam: the authors' 100 test problems (100 uniformly r
 | My 30-epoch model (old leaky validation) | 1,200 | 10.63% | 3.74% |
 | **Scaling study** | 1,200 | – | **3.77%** |
 | **Scaling study** | 12,000 | – | **3.38%** |
-| **Scaling study** | 36,000 | – | training now |
+| **Scaling study** | 36,000 | – | **3.38%** |
 
 FLUTE beating NN-Steiner here is expected. The paper's claim is that NN-Steiner wins on **bigger** problems (500+ points), which we haven't tested yet.
 
@@ -117,10 +120,10 @@ FLUTE beating NN-Steiner here is expected. The paper's claim is that NN-Steiner 
 |---|---|---|---|---|---|---|---|
 | 1,200 | `2026-09-29/16-01-59` | 0.226 | 32 | 42 (early stop) | 33.6 min | **3.77** | 1.12 ± 0.11 points behind; they win 88 of 100 |
 | 12,000 | `2026-09-29/17-07-18` | 0.427 | 44 | 54 (early stop) | 7 h 8 min | **3.38** | 0.74 ± 0.10 points behind; they win 76 of 100 |
-| 36,000 | `2026-10-08/11-43-16` | 0.399 so far (epoch 22) | – | running | – | pending | – |
+| 36,000 | `2026-10-08/11-43-16` | 0.459 | 56 | 60 (hit the cap) | 22 h 23 min | **3.38** | 0.74 ± 0.12 points behind; they win 74 of 100 |
 | Authors' model | – | – | – | – | – | **2.65** | – |
 
-**The average hides a range.** Per problem, the 1,200 model is 1.80% to 6.20% longer than optimal, the 12,000 model 1.25% to 5.77%, and the authors' model 1.03% to 5.22%. None hit the optimum exactly.
+**The average hides a range.** Per problem, the 1,200 model is 1.80% to 6.20% longer than optimal, the 12,000 model 1.25% to 5.77%, the 36,000 model 1.33% to 7.20%, and the authors' model 1.03% to 5.22%. None hit the optimum exactly.
 
 ---
 
@@ -128,15 +131,15 @@ FLUTE beating NN-Steiner here is expected. The paper's claim is that NN-Steiner 
 
 1. **The paper's results are real, and our setup measures them correctly.** The authors' model matches their published number (2.648% vs 2.646%), with 96 of 100 problems giving identical lengths. So our build, our patches and our scoring all behave like theirs.
 
-2. **More training data clearly helps, and it isn't done helping.** Going from 1,200 to 12,000 examples (10×) improved the score by 0.38 points and closed about a third of the gap to the authors. So too little data is at least part of why our model is behind. The 36,000 run shows whether the trend continues or levels off.
+2. **More training data helped once, then stopped helping.** Going from 1,200 to 12,000 examples (10×) improved the score by 0.38 points and closed about a third of the gap to the authors. Going from 12,000 to 36,000 (3×) changed nothing: −0.00 ± 0.11 points, and each model wins exactly 50 of the 100 problems. So in our setup the score levels off at about 3.38%, still 0.74 points behind the authors. The remaining gap comes from something other than the amount of data, and generating 120,000 examples isn't worth days of compute.
 
-3. **Bigger datasets need longer training.** The number of learning steps needed to peak went from 768 to 10,560. If the epoch cap doesn't grow with the data, runs get cut off early and the bigger dataset looks worse than it is.
+3. **Bigger datasets need longer training.** The number of learning steps needed to peak went from 768 (1,200 examples) to 10,560 (12,000) to at least 40,320 (36,000). If the epoch cap doesn't grow with the data, runs get cut off early and the bigger dataset looks worse than it is. The 36,000 run did hit its 60-epoch cap. A longer run might have found a checkpoint a few tenths better (point 6), but not enough to close the 0.74-point gap.
 
 4. **The cleanup step does a lot of the work.** Without it, the authors' model goes from 2.65% to 6.87%. NN-Steiner is a team effort: the network does the big-picture routing, and the exact solver fixes small local pieces.
 
-5. **F1 is a training signal, not the result.** Validation F1 nearly doubled from 1,200 to 12,000 examples (0.226 → 0.427), but the score improved much less (3.77% → 3.38%). Better F1 does mean shorter trees, but not in proportion, because the cleanup repairs many wrong guesses. Only "% longer than optimal" tells us how good a model is.
+5. **F1 is a training signal, not the result.** Validation F1 nearly doubled from 1,200 to 12,000 examples (0.226 → 0.427), but the score improved much less (3.77% → 3.38%). Better F1 does mean shorter trees, but not in proportion, because the cleanup repairs many wrong guesses. From 12,000 to 36,000 examples, validation F1 rose again (best 0.427 → 0.459; averaged over each run's last 6 checks, 0.403 → 0.435), and the score didn't move at all. Within a run, though, the checkpoint with the best validation F1 did beat the last checkpoint every time. So F1 is a rough guide: good for picking a checkpoint, not for predicting the score. Only "% longer than optimal" tells us how good a model is.
 
-6. **How sure we can be.** Each score is accurate to about ±0.1 points. Both gaps to the authors (1.12 and 0.74) are several times bigger than that, and they win most problems, so the gaps are real. The 1,200 vs 30-epoch comparison (+0.03) is a tie.
+6. **How sure we can be.** Each score is accurate to about ±0.1 points, but that only covers the luck of the 100 test problems. **Which checkpoint you score adds more:** each run's best and last checkpoints differ by 0.14–0.31 points ([details](#which-checkpoint-you-score-moves-the-score-by-up-to-03-points-2026-10-09-andrew)). So a difference under about 0.3 points between two training runs isn't trustworthy from one checkpoint each. All three gaps to the authors (1.12, 0.74 and 0.74) are well above that, and they win most problems, so the gaps are real. Two comparisons are ties: 1,200 vs the old 30-epoch model (+0.03), and 36,000 vs 12,000 (−0.00, 50 wins each).
 
 7. **What these results don't cover yet:**
    - Bigger problems (500–5,000 points), where the paper's main claim lives.
@@ -214,23 +217,25 @@ Run folder `work/outputs/2026-09-29/17-07-18`, config `scale`, `train.epochs=60`
 - One epoch is 24 learning steps on 1,200 examples, 240 on 12,000 and 720 on 36,000 (batches of 50).
 - The 1,200 model peaked after **768 steps** (epoch 32). The 12,000 model needed **10,560 steps** (epoch 44).
 - The 36,000 run was planned with a 30-epoch cap (21,600 steps). If it needs a few times more steps again, that cap could cut it off while it's still improving. **So I raised the cap to 60 epochs.**
+- Update (Oct 9): the 36,000 run's best came at **40,320 steps** (epoch 56), and it reached the 60-epoch cap before early stopping could end it. So even 60 was a little short. A longer run might find a checkpoint a few tenths better, but not enough to close the gap to the authors.
 
 **Why it matters:** if the cap doesn't grow with the data, a bigger dataset can look worse than it is. If a run hits its cap while validation F1 is still rising, mark it "hit the cap", not finished.
 
-### Data-scaling study, 36,000 examples: training now (2026-10-08, Andrew)
+### Data-scaling study, 36,000 examples: 3.38%, no better than 12,000 (2026-10-09, Andrew)
 
-Run folder `work/outputs/2026-10-08/11-43-16`, config `scale`, `train.epochs=60`. Started at 11:43 AM; each epoch takes about 22.5 minutes.
+Run folder `work/outputs/2026-10-08/11-43-16`, config `scale`, `train.epochs=60`.
 
-Status at 8:45 PM: epoch 24 done. Validation F1 is ahead of where the 12,000 run was at every epoch:
+- It ran all 60 epochs (22 h 23 min, 22.2 min per epoch). **It hit the cap:** the best validation F1 was **0.459 at epoch 56**, and early stopping needs 10 epochs with no new best.
+- Validation F1 was ahead of the 12,000 run at almost every check, and its best is higher (0.459 vs 0.427). That isn't one lucky spike: averaged over each run's last 6 checks it's 0.435 vs 0.403.
+- **Score: 3.384%,** the same as the 12,000 model (3.385%):
+  - vs the 12,000 model: −0.00 ± 0.11 points; each wins exactly 50 of 100 problems. The trees aren't identical (they differ by 0.85 points per problem on average), but the wins and losses cancel out.
+  - vs the 1,200 model: 0.38 ± 0.11 points better, shorter on 62 of 100.
+  - vs the authors' model: 0.74 ± 0.12 points behind (they win 74 of 100), the same gap as at 12,000.
+- The gap between training F1 and validation F1 didn't shrink with more data: 0.31, 0.34 and 0.37 at each run's best epoch (training F1 reached 0.83). The network has 207 million weights, enough to memorize even 36,000 examples.
 
-| Epoch | 2 | 6 | 10 | 14 | 18 | 22 | 24 |
-|---|---|---|---|---|---|---|---|
-| 12,000 run, val F1 | 0.233 | 0.277 | 0.316 | 0.323 | 0.347 | 0.367 | 0.364 |
-| **36,000 run, val F1** | 0.276 | 0.321 | 0.356 | 0.355 | 0.366 | **0.399** | 0.393 |
+**Why it matters:** in our setup, more data stops helping by 12,000 examples. The remaining 0.74-point gap to the authors comes from something else, so we're not generating 120,000. A practical bonus: later experiments can train on 12,000 examples (about 7 h) instead of 36,000 (about 22 h) with no loss in score.
 
-- It hasn't passed the 12,000 run's best (0.427) yet.
-- In the worst case it hits the cap around 10 AM on Oct 9. Early stopping ends it sooner if 10 epochs pass with no new best.
-- F1 isn't the score. The real answer comes when I score it on the 100 test problems.
+**Caveat:** because the run hit its cap, it may not have been fully trained. Its last checkpoint (epoch 60) scores 3.70%, 0.31 points worse than the best one, so the score moves a lot between checkpoints ([details](#which-checkpoint-you-score-moves-the-score-by-up-to-03-points-2026-10-09-andrew)). A longer run might find a checkpoint a few tenths better. That still wouldn't close the 0.74-point gap.
 
 ### First real training runs: the model learns (2026-09-28, Andrew)
 
@@ -318,6 +323,22 @@ Generation times on my Mac (18 CPU cores):
 
 With 100 test problems, "% longer than optimal" is accurate to about **±0.1 percentage points** (the standard error of the per-problem differences). Differences under about 0.3 points are too close to call. Because every model takes the same exam, I also compare problem by problem and count how many problems each model wins. The command is in [How to reproduce our numbers](#how-to-reproduce-our-numbers).
 
+### Which checkpoint you score moves the score by up to 0.3 points (2026-10-09, Andrew)
+
+Training keeps two checkpoints: `nnArora.pt` (best validation F1, the one we always score) and `nnArora_best.pt` (the **last** one, despite its name). I scored the last one for all three scaling runs:
+
+| Training examples | Best checkpoint (val F1 → score) | Last checkpoint (val F1 → score) | Last minus best |
+|---|---|---|---|
+| 1,200 | epoch 32: 0.226 → **3.77%** | epoch 42: 0.220 → 4.00% | +0.24 ± 0.08 points |
+| 12,000 | epoch 44: 0.427 → **3.38%** | epoch 54: 0.380 → 3.53% | +0.14 ± 0.09 points |
+| 36,000 | epoch 56: 0.459 → **3.38%** | epoch 60: 0.425 → 3.70% | +0.31 ± 0.12 points |
+
+- The best-F1 checkpoint wins all 3 times, so choosing by validation F1 works.
+- But F1 is a coarse guide. At 1,200 a tiny F1 drop (0.226 → 0.220) cost 0.24 points. The 12,000 best (F1 0.427) and the 36,000 last (F1 0.425) differ by 0.31 points.
+- The scaling result still holds either way. 12,000 beats 1,200 with both checkpoints (−0.38 best, −0.48 last). 36,000 never beats 12,000 (−0.00 best, +0.17 ± 0.13 last).
+
+**Why it matters:** the ±0.1 above only covers the luck of the 100 test problems. Comparing two **training runs** has a second source of luck: which checkpoint happened to be saved. So a difference under about 0.3 points between two training setups isn't trustworthy from one checkpoint each. For the next experiments, I'll score both checkpoints of every run (2 min each). A sturdier option is to keep the top 3 checkpoints by validation F1 and average their scores; that needs a small trainer patch and about 830 MB per checkpoint.
+
 ### What the eval costs mean (2026-09-28, Andrew)
 
 `flow=eval` prints five costs for one test case. Two of them don't depend on the model at all:
@@ -361,7 +382,7 @@ Measured training speed on the Mac: about 49 s per epoch on 1,200 examples, 7.9 
 
 The authors' trainer loads the **entire training set into memory** before training. The 1,200 set is 189 MB, so the paper's 120,000 examples would be about **19 GB**. That fits on a 64 GB Mac but likely not on free Colab (about 12–13 GB of RAM). At the measured speeds, one epoch on 120,000 would take roughly **80 minutes** on my Mac.
 
-**Why it matters:** the full dataset size decides where training can happen. The data-scaling study tells us whether 120,000 is worth it at all; we decide after the 36,000 result. The options are training on my Mac, using a smaller dataset, paying for a high-RAM Colab machine, or changing the data loader.
+**Why it matters:** the full dataset size decides where training can happen. Update (Oct 9): the data-scaling study says 120,000 isn't worth it (36,000 scored no better than 12,000), so this limit no longer blocks us. A 12,000 set is 1.9 GB on disk.
 
 ---
 
@@ -401,9 +422,9 @@ The authors' code is downloaded fresh by `setup.sh`, so we never edit it by hand
 
 ---
 
-## The data-scaling study (in progress)
+## The data-scaling study (done)
 
-This is what I'm working on now.
+Finished Oct 9. **Result: the score leveled off.** 1,200 → 3.77%, 12,000 → 3.38%, 36,000 → 3.38%. That's the third row of the outcome table below.
 
 **The question:** our model is behind the authors'. Is that because it saw 100× less data?
 
@@ -431,21 +452,20 @@ This is what I'm working on now.
 | reaches about 2.65% | Full reproduction, with less data than the paper | Use this model for everything else |
 | levels off above 2.65% | Something other than data is holding it back | Look at training length and learning rate |
 
-**Status:** 1,200 and 12,000 are scored; 36,000 is training. Results are in [Training results](#training-results).
+**Status:** all three are scored, and the score leveled off above 2.65%. Details are in [Training results](#training-results).
 
 ---
 
 ## What comes next
 
-**When the 36,000 run is scored:**
-1. **Graph it:** training examples (log scale) vs % longer than optimal, with a dashed line at the authors' 2.65%.
-2. **Check what's real:** look at the ± and the problem-by-problem wins, not just the averages.
-3. **Decide** using the table above: 120,000, done, or look at training settings.
-4. **Write it up** here and as a report section. This is one of my 2–3 experiments: how much data does NN-Steiner need?
-5. **Hand the best model to Shraddha** with a clear name (e.g. `m15_kb4_n36000.pt`), its settings and its curves, so she can test it on bigger problems and other point patterns.
+**Now that the scaling study is done** (the score leveled off, so no 120,000):
+1. ~~Quick check: score the 36,000 run's last checkpoint.~~ Done: the last checkpoint of every run is 0.14–0.31 points worse than its best ([details](#which-checkpoint-you-score-moves-the-score-by-up-to-03-points-2026-10-09-andrew)). From now on I score both checkpoints of every run.
+2. **Graph it:** training examples (log scale) vs % longer than optimal, with a dashed line at the authors' 2.65%. Then write a report section. This is one of my 2–3 experiments: in our setup, NN-Steiner stops improving by 12,000 examples.
+3. **Find what else differs from the authors' training.** Training length and learning rate are the obvious candidates. A longer run might find a checkpoint a few tenths better, but that alone wouldn't close 0.74 points. Also check what their training examples looked like: ours use upstream's default `data_gen` settings (`num_points: 180`, a 100 × 100 canvas).
+4. **Hand the best model to Shraddha** with a clear name (`m15_kb4_n36000.pt`; the 12,000 and 36,000 models tie, and this one saw the most data), its settings and its curves, so she can test it on bigger problems and other point patterns.
 
 **After that:**
-- **1–2 more experiments,** each compared against the best scaling-study model. The candidates (the authors tested several of these, so we can check against their result files):
+- **1–2 more experiments,** each compared against the best scaling-study model and trained on 12,000 examples (same score as 36,000, a third of the time). The candidates (the authors tested several of these, so we can check against their result files):
   - `kb` (max points per leaf cell): 1, 4 or 7
   - `m` (portals per cell side): 3, 7 or 15
   - `portal_weight`, including 0, to show why the weighting matters
@@ -632,7 +652,7 @@ Everything under `work/` is on my Mac only (it isn't in git or on Drive). Tell m
 | `2026-09-28/19-11-43` | Medium run: 1,200 examples, 30 epochs, the 3.74% model (old leaky validation) |
 | `2026-09-29/16-01-59` | **Scaling study: 1,200 examples** (3.77%) |
 | `2026-09-29/17-07-18` | **Scaling study: 12,000 examples** (3.38%) |
-| `2026-10-08/11-43-16` | **Scaling study: 36,000 examples** (training now) |
+| `2026-10-08/11-43-16` | **Scaling study: 36,000 examples** (3.38%) |
 
 Inside a training run: `train/` holds the TensorBoard curves, and `train/model/nnArora.pt` is the best model.
 
@@ -643,6 +663,8 @@ Inside a training run: `train/` holds the TensorBoard curves, and `train/model/n
 | `scale-pretrained-solved.txt` | Authors' model (2.65%) |
 | `scale-1200-solved.txt` | 1,200 examples (3.77%) |
 | `scale-12000-solved.txt` | 12,000 examples (3.38%) |
+| `scale-36000-solved.txt` | 36,000 examples (3.38%) |
+| `scale-1200-last-`, `scale-12000-last-`, `scale-36000-ep60-solved.txt` | Each run's **last** checkpoint (4.00%, 3.53%, 3.70%) |
 | `check-refine-on/off-100-uniform-solved.txt` | Authors' model with cleanup on / off |
 | `check-medium30-refine-on/off-100-uniform-solved.txt` | My 30-epoch model with cleanup on / off |
 
@@ -670,8 +692,7 @@ Inside a training run: `train/` holds the TensorBoard curves, and `train/model/n
 
 ## Open questions
 
-- **Does the data trend continue at 36,000, or level off?** The run is training now. (Andrew)
-- **How big should the full training set be?** It depends on the answer above, and on the memory limit in [Compute and hardware](#compute-and-hardware). (Team, with Jaspreet)
+- **What causes the remaining 0.74-point gap to the authors,** if not the amount of data? Candidates: training length, learning rate, and what their training examples looked like. (Andrew)
 - **Does NN-Steiner beat FLUTE on bigger problems (500+ points) in our setup,** as the paper claims? (Shraddha)
 - **Which 1–2 more experiments do we commit to?** Candidates are in [What comes next](#what-comes-next). (Andrew proposes, the team agrees)
 - **Does loading the latest checkpoint instead of the best one** change the authors' reported test numbers? (Andrew)
@@ -679,6 +700,8 @@ Inside a training run: `train/` holds the TensorBoard curves, and `train/model/n
 **Answered:**
 - *Do we reproduce the authors' pretrained results across all 100 test cases?* Yes, once the cleanup step is restored: 2.648% vs 2.646% ([details](#the-authors-model-matches-the-paper-once-a-switched-off-cleanup-step-is-restored-2026-09-29-andrew)).
 - *Where does validation F1 level off?* On 1,200 examples, around epoch 16–20 (about 0.22 on the clean validation set). The old run's "still rising" 0.304 was on the leaky set. Bigger datasets level off later and higher.
+- *Does the data trend continue at 36,000, or level off?* It levels off: 36,000 scores 3.38%, the same as 12,000 ([details](#data-scaling-study-36000-examples-338-no-better-than-12000-2026-10-09-andrew)).
+- *How big should the full training set be?* 12,000 examples is enough in our setup; 36,000 didn't help, so we're not making 120,000. That also avoids the memory limit in [Compute and hardware](#compute-and-hardware).
 
 ---
 
