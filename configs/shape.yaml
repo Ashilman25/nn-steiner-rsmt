@@ -1,0 +1,34 @@
+# Test-shaped training data: points spread over the whole 10,000 x 10,000 quadtree box,
+# like the test problems, instead of a 100 x 100 corner (quadtrees 3-4 levels deep, not 9-11).
+# Everything else matches scale.yaml, so the data's shape is the only change.
+#
+# Make the data (val/test use 100 points like the test problems; train keeps 180 like scale):
+#   scripts/arora.sh shape 'flow=[data_gen]' data_gen.seed=7200 data_gen.num_points=100 data_gen.num_trees=4 data_gen.batch=128
+#   scripts/arora.sh shape 'flow=[data_gen]' data_gen.seed=8200 data_gen.num_points=100 data_gen.num_trees=2 data_gen.batch=64
+#   scripts/arora.sh shape 'flow=[data_gen]' data_gen.seed=100000 data_gen.num_trees=240 data_gen.batch=12000
+# Train:
+#   caffeinate -i scripts/arora.sh shape train.train_set=data/batch240_10000x10000-uniform-12000-tensor train.epochs=60
+# Score on the 100 test cases:
+#   scripts/arora.sh shape 'flow=[nn_exp]' nn_exp.model=outputs/<date>/<time>/train/model/nnArora.pt nn_exp.output=exp_out/shape-12000
+defaults:
+  - config
+  - _self_
+
+flow:
+  - train
+
+data_gen:
+  x_range: 10000
+  y_range: 10000
+
+train:
+  val_set: data/batch4_10000x10000-uniform-128-tensor
+  test_set: data/batch2_10000x10000-uniform-64-tensor
+  batch_size: 50       
+  val_batch_size: 32
+  test_batch_size: 32
+  eval: 2               
+  max_no_update: 5      
+
+nn_exp:
+  test_set: upstream/points/point100_10000x10000-uniform-100-pt/
