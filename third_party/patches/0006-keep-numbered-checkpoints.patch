@@ -1,0 +1,36 @@
+diff --git a/conf/config.yaml b/conf/config.yaml
+index d5c501f..4e8b2a7 100644
+--- a/conf/config.yaml
++++ b/conf/config.yaml
+@@ -58,6 +58,7 @@ train:
+   epochs: 10
+   max_no_update: 15
+   val_save: true
++  keep_every: 0
+   lr: 1e-4
+   portal_weight: 15
+   batch_size: 50
+diff --git a/arora/training/trainerProcess.py b/arora/training/trainerProcess.py
+--- a/arora/training/trainerProcess.py
++++ b/arora/training/trainerProcess.py
+@@ -48,6 +48,8 @@
+         self.world_size: int = world_size
+         self.epochs: int = args["epochs"]
+         self.eval: int = args["eval"]
++        # Every keep_every epochs, keep a numbered checkpoint (0 = off)
++        self.keep_every: int = args.get("keep_every", 0) or 0
+         self.max_no_update: int = args["max_no_update"]
+         self.val_save: bool = args["val_save"]
+         self.portal_weight: int = args["portal_weight"]
+@@ -209,6 +211,11 @@
+                 if not os.path.exists("train/model"):
+                     os.mkdir("train/model")
+                 torch.save(self.ddp_model.state_dict(), "train/model/nnArora_best.pt")
++            if self.keep_every > 0 and epoch > 0 and epoch % self.keep_every == 0:
++                os.makedirs("train/model", exist_ok=True)
++                torch.save(
++                    self.ddp_model.state_dict(), f"train/model/nnArora_ep{epoch}.pt"
++                )
+ 
+         accs: List[float] = []
+         for batch in batches:
