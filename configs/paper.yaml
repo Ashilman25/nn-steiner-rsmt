@@ -1,0 +1,29 @@
+# Bigger batches, no early stopping, and numbered checkpoints kept along the way.
+# The paper used 120,000 examples, batches of 5,000 and 5,000 epochs - thats too long
+
+defaults:
+  - config
+  - _self_
+
+flow:
+  - train
+
+data_gen:
+  x_range: 10000
+  y_range: 10000
+  constraint: level
+  level: 3
+
+train:
+  train_set: data/level3_10000x10000-uniform-12000-tensor
+  val_set: data/batch4_10000x10000-uniform-128-tensor
+  test_set: data/batch2_10000x10000-uniform-64-tensor
+  batch_size: 500         
+  val_batch_size: 32
+  test_batch_size: 32
+  eval: 10                
+  max_no_update: 100000   # never stop early
+  keep_every: 50          # keep nnArora_ep<N>.pt every 50 epochs (a multiple of eval)
+
+nn_exp:
+  test_set: upstream/points/point100_10000x10000-uniform-100-pt/
