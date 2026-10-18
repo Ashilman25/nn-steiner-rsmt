@@ -1,0 +1,14 @@
+diff --git a/arora/flow/dataGen.py b/arora/flow/dataGen.py
+--- a/arora/flow/dataGen.py
++++ b/arora/flow/dataGen.py
+@@ -183,8 +183,9 @@
+         point_gen: PointGen = get_pointGen(
+             data_args["dist"], data_args, data_args["seed"]
+         )
++        # kb lives in the quadtree settings, not data_gen
+         points: List[Tuple[int, int]] = get_struct_quadtree(
+-            point_gen.get_points(data_args["num_points"]), simpl_qt, data_args["kb"]
++            point_gen.get_points(data_args["num_points"]), simpl_qt, quadtree_args["kb"]
+         )
+         qt: QuadTree = get_quadtree(points, quadtree_args)
+         trees: List[QuadTree | None] = [qt]
