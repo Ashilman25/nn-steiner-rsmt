@@ -2,7 +2,7 @@
 # then train for a few epochs. Used by scripts/smoke_test.sh.
 #
 # Everything not set here comes from the authors' conf/config.yaml
-# (third_party/NN-Steiner/conf/config.yaml): m=15, kb=4, lr=1e-4, portal_weight=15, ...
+
 defaults:
   - config
   - _self_
