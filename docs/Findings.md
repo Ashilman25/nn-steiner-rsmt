@@ -1,15 +1,15 @@
 # Findings
 
-The team's running record of the project: where things stand, what each of us needs to know, every important finding (results, surprises, and problems that affect how we run experiments or what we write in the report), and how to reproduce it all. Most entries so far are mine (Andrew, Modeling).
+The team's running record of the project: where things stand, what each of us needs to know, every important finding (results, surprises, and problems that affect how we run experiments or what we write in the report), and how to reproduce it all.
 
 **New here?** Read [Where things stand](#where-things-stand) and [What you need to know or do](#what-you-need-to-know-or-do) first.
 
-**How to add a finding:** give the date, who found it, what we found, the evidence (numbers, run folder, command), and why it matters. Put it in the right section. Move items out of "Open questions" once they're answered, and update "Where things stand" if the big picture changes.
+**How to add a finding:** give the date, what we found, the evidence (numbers, run folder, command), and why it matters. Put it in the right section. Move items out of "Open questions" once they're answered, and update "Where things stand" if the big picture changes.
 
 - Background on the paper: [Project_Proposal.md](Project_Proposal.md)
 - Who owns what: [Team_Responsibilities.md](Team_Responsibilities.md)
 
-*Last updated: 2026-10-20 (Andrew)*
+*Last updated: 2026-10-22*
 
 ---
 
@@ -54,9 +54,9 @@ The team's running record of the project: where things stand, what each of us ne
 | Does the authors' network guess portals better than ours? | **Depends on the data's shape.** On our corner-shaped validation data, ours wins (F1 0.46 vs 0.29). On validation data shaped like the test problems, theirs wins clearly (0.37 vs 0.25). Our corner-shaped training examples put all points in one corner (quadtrees 9–11 levels deep); the test problems don't (2–4) ([details](#comparing-the-two-networks-directly-done)). Our 120,000 model now beats theirs on test-shaped data (0.42 vs 0.37), though the trees only tie ([details](#the-papers-full-120000-examples-done)) |
 | Is the shape of our training data the fix? | **It helps a little; it isn't the big fix.** Training on 12,000 examples shaped like the test problems gave 3.62% at the default threshold 0.95, because that network is rarely 95% sure. Its own threshold sweep picked 0.8: **3.28%**, a tie with the corner-shaped 3.38% on the 100 test problems (−0.10 ± 0.12), and a clearer gain on the 200-point set (−0.25 ± 0.09). That still left it 0.63 points behind the authors; the rest of the gap was the number of examples ([details](#training-on-test-shaped-examples-done)) |
 | How did the authors train their model? | **About 4,000× longer than our test-shaped model's best checkpoint** (and 36× longer than our 120,000 run): 120,000 examples, 5,000 epochs, batches of 5,000, one fixed tree shape, no early stopping mentioned. Everything else matches our setup, and their data was test-shaped too ([details](#how-the-paper-trained-its-model)) |
-| Does training much longer help? | **Not on 12,000 examples.** A paper-style run (one tree shape, batch 500, no early stopping) memorized them: by epoch 600 training F1 was 0.98 and validation F1 had fallen from 0.24 to 0.18. Its trees got worse too: **3.45%** at epoch 50 (its best), 3.68% at epoch 600 (+0.22 ± 0.11). Even the best is behind the test-shaped 3.28% ([details](#scoring-the-long-run-longer-training-on-12000-examples-doesnt-help-2026-10-19-andrew)). **On 120,000 examples it does:** the network no longer memorizes (training F1 only 0.76 after 140 epochs), and the trees improve from 3.62% at epoch 5 to 2.74% at epoch 40, then hold steady ([details](#the-papers-full-120000-examples-done)) |
+| Does training much longer help? | **Not on 12,000 examples.** A paper-style run (one tree shape, batch 500, no early stopping) memorized them: by epoch 600 training F1 was 0.98 and validation F1 had fallen from 0.24 to 0.18. Its trees got worse too: **3.45%** at epoch 50 (its best), 3.68% at epoch 600 (+0.22 ± 0.11). Even the best is behind the test-shaped 3.28% ([details](#scoring-the-long-run-longer-training-on-12000-examples-doesnt-help-2026-10-19)). **On 120,000 examples it does:** the network no longer memorizes (training F1 only 0.76 after 140 epochs), and the trees improve from 3.62% at epoch 5 to 2.74% at epoch 40, then hold steady ([details](#the-papers-full-120000-examples-done)) |
 | What's running right now? | Nothing. The 120,000 run is finished and scored |
-| What's next? | Hand the 120,000 model to Shraddha (at threshold 0.9) for bigger problems and other point patterns. Then the report, and `portal_weight` if there's time. Details in [What comes next](#what-comes-next) |
+| What's next? | Hand the 120,000 model over for evaluation (at threshold 0.9) on bigger problems and other point patterns. Then the report, and `portal_weight` if there's time. Details in [What comes next](#what-comes-next) |
 
 "% longer than optimal" is the real score: how much more wire our tree uses than the perfect tree from GeoSteiner. Lower is better. 3.38% means: where the perfect tree needs 100 m of wire, ours uses 103.38 m.
 
@@ -70,7 +70,7 @@ The team's running record of the project: where things stand, what each of us ne
 - **Judge models by "% longer than optimal", not by F1.** F1 tracks training; it isn't the result. See [What the results mean](#what-the-results-mean).
 - **Give every model its own threshold.** Pick it on the 200-point set and report the 100-point score, which is what `scripts/score_checkpoint.sh` does. The default 0.95 isn't every model's best.
 
-### Shraddha
+### Evaluation
 
 - **Any NN-Steiner numbers made before Sep 29 measured the wrong setup.** The authors' final code has a cleanup step (`refine_leaves`) switched off. With it off, their model scores 6.87%, not 2.65%. Patch 0004 switches it back on. Please re-run anything from before then.
 - **Known-good checks for your pipeline:**
@@ -83,9 +83,9 @@ The team's running record of the project: where things stand, what each of us ne
 
 ## Timeline
 
-**Sep 21 (team):** submitted the [proposal](Project_Proposal.md).
+**Sep 21:** submitted the [proposal](Project_Proposal.md).
 
-**Sep 28 (Andrew): got the authors' code running.**
+**Sep 28: got the authors' code running.**
 - Built our repo as a wrapper around their code. `scripts/setup.sh` downloads it at a fixed commit, applies our patches and builds everything. `scripts/arora.sh` runs it with our configs. `notebooks/colab.ipynb` does the same on Colab. See [Our scripts](#our-scripts-and-what-each-one-does).
 - Fixed what didn't work (patches 0001–0003): their training needed 2+ NVIDIA GPUs, and RMST didn't build and had a 64-bit memory bug.
 - Smoke test passed on the Mac and on a Colab T4. The Mac turned out faster, so I train locally.
@@ -93,7 +93,7 @@ The team's running record of the project: where things stand, what each of us ne
 - One test problem with the authors' model didn't match their recorded result (78,541 vs 75,641).
 - Wrote this file and updated `Team_Responsibilities.md`.
 
-**Sep 29 (Andrew): matched the paper, and set up the scaling study.**
+**Sep 29: matched the paper, and set up the scaling study.**
 - Found why we didn't match: the authors left the cleanup step switched off. Patch 0004 fixes it, and their model now scores 2.648% vs their 2.646%.
 - Found that the cleanup step does a lot of the work, and scored my 30-epoch model properly (3.74%).
 - Found a validation leak in the default seeds, and made clean validation and test sets.
@@ -101,21 +101,21 @@ The team's running record of the project: where things stand, what each of us ne
 - Designed the data-scaling study (`configs/scale.yaml`) and generated all its data. Data generation froze on a rare example; patch 0005 fixes that.
 - Trained and scored the 1,200 model (3.77%), then started the 12,000 run.
 
-**Sep 30 (Andrew):** the 12,000 model finished and scored 3.38%. It needed many more learning steps to peak, so I raised the 36,000 run's epoch cap from 30 to 60.
+**Sep 30:** the 12,000 model finished and scored 3.38%. It needed many more learning steps to peak, so I raised the 36,000 run's epoch cap from 30 to 60.
 
-**Oct 8 (Andrew):** started the 36,000 run.
+**Oct 8:** started the 36,000 run.
 
-**Oct 9 (Andrew):** the 36,000 run used all 60 epochs (22 h 23 min) and scored 3.38%, a tie with 12,000. More data stopped helping, so the scaling study is done and we're not making 120,000 (of corner-shaped data; 120,000 paper-style examples later closed the gap, Oct 19–20). Then I scored each run's last checkpoint too: it's 0.14–0.31 points worse than the best one every time, so the checkpoint you score matters.
+**Oct 9:** the 36,000 run used all 60 epochs (22 h 23 min) and scored 3.38%, a tie with 12,000. More data stopped helping, so the scaling study is done and we're not making 120,000 (of corner-shaped data; 120,000 paper-style examples later closed the gap, Oct 19–20). Then I scored each run's last checkpoint too: it's 0.14–0.31 points worse than the best one every time, so the checkpoint you score matters.
 
-**Oct 9–10 (Andrew): the threshold experiment.** Solved the 100- and 200-point test sets with our 36,000 model at thresholds from 0.1 to 1.0. 0.95 (the default) is our best, so our score stays 3.38%. Over the "no network" baseline, our network adds only about a third of what the authors' does. Spot-checked the authors' model at two thresholds: it matches their result files, so their threshold curves are comparable with ours.
+**Oct 9–10: the threshold experiment.** Solved the 100- and 200-point test sets with our 36,000 model at thresholds from 0.1 to 1.0. 0.95 (the default) is our best, so our score stays 3.38%. Over the "no network" baseline, our network adds only about a third of what the authors' does. Spot-checked the authors' model at two thresholds: it matches their result files, so their threshold curves are comparable with ours.
 
-**Oct 10 (Andrew): graded the two networks' portal guesses directly.** Wrote `scripts/val_f1.py`. On our validation set the authors' network scores a lower F1 than ours (0.29 vs 0.46), yet builds better trees. Then found that our training examples are shaped very differently from the test problems (quadtrees 9–11 levels deep vs 2–4). On a validation set shaped like the test problems the ranking flips: the authors' network 0.37, ours 0.25. Set up `configs/shape.yaml` for a test-shaped training run.
+**Oct 10: graded the two networks' portal guesses directly.** Wrote `scripts/val_f1.py`. On our validation set the authors' network scores a lower F1 than ours (0.29 vs 0.46), yet builds better trees. Then found that our training examples are shaped very differently from the test problems (quadtrees 9–11 levels deep vs 2–4). On a validation set shaped like the test problems the ranking flips: the authors' network 0.37, ours 0.25. Set up `configs/shape.yaml` for a test-shaped training run.
 
-**Oct 13–18 (Andrew): the test-shaped run.** Made the test-shaped test set (seed 8200) and 12,000 test-shaped training examples, trained (early-stopped at epoch 22, 1 h 55 min) and scored it: **3.62%**, no better than the corner-shaped 3.38%. Then graded its portal guesses on the test-shaped test set: they're about as often right as the authors', but rarely 95% sure, so at the default threshold the solver barely uses them. Its own threshold sweep picked 0.8 on the 200-point set: **3.28%** on the 100 test problems, a tie with 3.38% there and a clearer gain on the 200-point set. The shape helps a little; it isn't the big fix. Then read the paper's training recipe: everything matches ours except they trained about 4,000× longer, on one fixed tree shape, with no early stopping mentioned. Set up a paper-style run: patch 0006 (numbered checkpoints), patch 0007 (the paper's data mode crashed in the released code) and `configs/paper.yaml`, all tested. Made its 12,000 examples and ran a speed test: batch 500 for 1,600 epochs (about 21.5 h) is the plan.
+**Oct 13–18: the test-shaped run.** Made the test-shaped test set (seed 8200) and 12,000 test-shaped training examples, trained (early-stopped at epoch 22, 1 h 55 min) and scored it: **3.62%**, no better than the corner-shaped 3.38%. Then graded its portal guesses on the test-shaped test set: they're about as often right as the authors', but rarely 95% sure, so at the default threshold the solver barely uses them. Its own threshold sweep picked 0.8 on the 200-point set: **3.28%** on the 100 test problems, a tie with 3.38% there and a clearer gain on the 200-point set. The shape helps a little; it isn't the big fix. Then read the paper's training recipe: everything matches ours except they trained about 4,000× longer, on one fixed tree shape, with no early stopping mentioned. Set up a paper-style run: patch 0006 (numbered checkpoints), patch 0007 (the paper's data mode crashed in the released code) and `configs/paper.yaml`, all tested. Made its 12,000 examples and ran a speed test: batch 500 for 1,600 epochs (about 21.5 h) is the plan.
 
-**Oct 18–19 (Andrew): the long paper-style run.** Trained on the 12,000 paper-style examples at batch 500 with no early stopping. By epoch 609 it was memorizing (training F1 0.98, validation F1 down from 0.24 at epoch 120 to 0.18), so I stopped it at epoch 611. Wrote `scripts/score_checkpoint.sh` and scored 5 of its checkpoints: the trees got a little worse as it memorized (3.45% at epoch 50, 3.68% at epoch 600), and all are behind the test-shaped 3.28%. Training longer on 12,000 examples doesn't help; next is the paper's full 120,000.
+**Oct 18–19: the long paper-style run.** Trained on the 12,000 paper-style examples at batch 500 with no early stopping. By epoch 609 it was memorizing (training F1 0.98, validation F1 down from 0.24 at epoch 120 to 0.18), so I stopped it at epoch 611. Wrote `scripts/score_checkpoint.sh` and scored 5 of its checkpoints: the trees got a little worse as it memorized (3.45% at epoch 50, 3.68% at epoch 600), and all are behind the test-shaped 3.28%. Training longer on 12,000 examples doesn't help; next is the paper's full 120,000.
 
-**Oct 19–20 (Andrew): the paper's full 120,000 examples.** Made 120,000 paper-style examples (9.6 GB) and trained them for 140 epochs at batch 500. It ran in three parts: I paused it twice (at epochs 42 and 123) and restarted from the last numbered checkpoint with `train.checkpoint`. About 22.5 h in all. Validation F1 rose to 0.43 with no memorizing. Scored 6 checkpoints with `scripts/score_checkpoint.sh`. The one picked on the 200-point set (epoch 140, threshold 0.9) scores **2.73%**, a tie with the authors' 2.65% (+0.08 ± 0.09). The number of examples was the gap.
+**Oct 19–20: the paper's full 120,000 examples.** Made 120,000 paper-style examples (9.6 GB) and trained them for 140 epochs at batch 500. It ran in three parts: I paused it twice (at epochs 42 and 123) and restarted from the last numbered checkpoint with `train.checkpoint`. About 22.5 h in all. Validation F1 rose to 0.43 with no memorizing. Scored 6 checkpoints with `scripts/score_checkpoint.sh`. The one picked on the 200-point set (epoch 140, threshold 0.9) scores **2.73%**, a tie with the authors' 2.65% (+0.08 ± 0.09). The number of examples was the gap.
 
 ---
 
@@ -168,13 +168,13 @@ FLUTE beating NN-Steiner here is expected. The paper's claim is that NN-Steiner 
 
 5. **F1 is a training signal, not the result.** Validation F1 nearly doubled from 1,200 to 12,000 examples (0.226 → 0.427), but the score improved much less (3.77% → 3.38%). Better F1 does mean shorter trees, but not in proportion, because the cleanup repairs many wrong guesses. From 12,000 to 36,000 examples, validation F1 rose again (best 0.427 → 0.459; averaged over each run's last 6 checks, 0.403 → 0.435), and the score didn't move at all. Within a run, though, the checkpoint with the best validation F1 did beat the last checkpoint every time. So F1 is a rough guide: good for picking a checkpoint, not for predicting the score. Between models trained on different data it can point the wrong way entirely: on our validation data the authors' model scores 0.29 vs our 0.46, yet builds much better trees ([details](#comparing-the-two-networks-directly-done)). Our 120,000 model is the reverse case: a higher F1 than the authors' on test-shaped data (0.41 vs 0.35), but trees that only tie. Only "% longer than optimal" tells us how good a model is.
 
-6. **How sure we can be.** Each score is accurate to about ±0.1 points, but that only covers the luck of the 100 test problems. **Which checkpoint you score adds more:** each run's best and last checkpoints differ by 0.14–0.31 points ([details](#which-checkpoint-you-score-moves-the-score-by-up-to-03-points-2026-10-09-andrew)). So a difference under about 0.3 points between two training runs isn't trustworthy from one checkpoint each. All three scaling-study gaps to the authors (1.12, 0.74 and 0.74) are well above that, and they win most problems, so those gaps are real. The 120,000 model's gap (+0.08) is well below it: a tie. Two comparisons are ties: 1,200 vs the old 30-epoch model (+0.03), and 36,000 vs 12,000 (−0.00, 50 wins each).
+6. **How sure we can be.** Each score is accurate to about ±0.1 points, but that only covers the luck of the 100 test problems. **Which checkpoint you score adds more:** each run's best and last checkpoints differ by 0.14–0.31 points ([details](#which-checkpoint-you-score-moves-the-score-by-up-to-03-points-2026-10-09)). So a difference under about 0.3 points between two training runs isn't trustworthy from one checkpoint each. All three scaling-study gaps to the authors (1.12, 0.74 and 0.74) are well above that, and they win most problems, so those gaps are real. The 120,000 model's gap (+0.08) is well below it: a tie. Two comparisons are ties: 1,200 vs the old 30-epoch model (+0.03), and 36,000 vs 12,000 (−0.00, 50 wins each).
 
 7. **The gap is in the network itself, not the threshold.** At threshold 1.0 almost no portal passes, so that's a "no network" baseline: 3.77% for our model, 3.72% for the authors'. Our network improves on it by 0.39 points; theirs by 1.07. So ours delivers about a third of their network's benefit, and the 200-point set gives the same ratio (0.24 vs 0.63). The default threshold (0.95) is already our best, so changing it can't close the gap. Also, using the portals our network is 60–90% sure about makes trees no better, or even worse, than using no network. Using the authors' portals in that range helps ([details](#the-threshold-experiment-done)). That holds for our corner-shaped model. For the test-shaped model the threshold did matter (point 8), and the 120,000 model's best is 0.9.
 
 8. **Our training data didn't match the test problems, but fixing that didn't close the gap.** Our training examples put all points in one corner of the quadtree's box, giving trees 9–11 levels deep; the test problems' trees are 2–4 levels deep. On validation data shaped like ours, our network guesses portals better than the authors' (F1 0.46 vs 0.29). On validation data shaped like the test problems, theirs is clearly better (0.37 vs 0.25) ([details](#comparing-the-two-networks-directly-done)). Training on test-shaped examples scored 3.62% at threshold 0.95, because the new network is rarely 95% sure (though its portals are about as often right as the authors'). At the threshold that suits it (0.8, picked on the 200-point set) it scores **3.28%**: a tie with 3.38% on the 100 test problems, a clearer gain on the 200-point set, and its network now adds 0.50 points over no network instead of 0.39 ([details](#training-on-test-shaped-examples-done)). So the shape helps a little, but the gap to the authors was still 0.63 points (point 10 closes it). Also: each model needs its own threshold, picked on the 200-point set.
 
-9. **Training much longer on 12,000 examples doesn't help; the network memorizes them.** The paper trained about 4,000× longer than our best checkpoint ([details](#how-the-paper-trained-its-model)), so I ran a paper-style copy (one tree shape, batch 500, no early stopping) for 611 epochs. It learned its 12,000 examples by heart (training F1 0.98) while validation F1 fell, and the trees got a little worse with it: 3.45% at epoch 50, 3.68% at epoch 600 (+0.22 ± 0.11). Even its best checkpoint is behind the test-shaped model (+0.17 ± 0.11 on the 100 test problems, +0.19 ± 0.07 on the 200-point set) ([details](#scoring-the-long-run-longer-training-on-12000-examples-doesnt-help-2026-10-19-andrew)). Both of our whole-box runs memorized 12,000 examples early, which pointed at the paper's 10× more examples. Point 10 confirms it.
+9. **Training much longer on 12,000 examples doesn't help; the network memorizes them.** The paper trained about 4,000× longer than our best checkpoint ([details](#how-the-paper-trained-its-model)), so I ran a paper-style copy (one tree shape, batch 500, no early stopping) for 611 epochs. It learned its 12,000 examples by heart (training F1 0.98) while validation F1 fell, and the trees got a little worse with it: 3.45% at epoch 50, 3.68% at epoch 600 (+0.22 ± 0.11). Even its best checkpoint is behind the test-shaped model (+0.17 ± 0.11 on the 100 test problems, +0.19 ± 0.07 on the 200-point set) ([details](#scoring-the-long-run-longer-training-on-12000-examples-doesnt-help-2026-10-19)). Both of our whole-box runs memorized 12,000 examples early, which pointed at the paper's 10× more examples. Point 10 confirms it.
 
 10. **With the paper's full 120,000 examples, our own model matches the authors'.** Same paper-style setup as point 9, with 10× the examples, for 140 epochs: 33,600 learning steps of 500, about 16.8 million examples processed, 36× less than the paper. It scores **2.73%** vs the authors' 2.65%: +0.08 ± 0.09 points, and each model wins about half the problems (52 vs 48). That's 0.55 ± 0.11 better than our previous best (3.28%), well past the 0.3 points set in advance, so **the number of examples was the gap**. The extra examples don't make early learning faster: at the same 1,200 steps, 120,000 examples score no better than 12,000 (3.62% vs 3.45%, +0.17 ± 0.10). What they do is stop the memorizing, so the network can keep learning. Training F1 only reached 0.76 (vs 0.98 on 12,000), and the trees went from 3.62% at epoch 5 to 2.74% at epoch 40, then held steady to epoch 140. Our network now adds about 93% of what the authors' adds over no network (0.99 vs 1.07 points) ([details](#the-papers-full-120000-examples-done)).
 
@@ -188,7 +188,7 @@ FLUTE beating NN-Steiner here is expected. The paper's claim is that NN-Steiner 
 
 ## Reproducing the authors' results
 
-### The authors' model matches the paper once a switched-off cleanup step is restored (2026-09-29, Andrew)
+### The authors' model matches the paper once a switched-off cleanup step is restored (2026-09-29)
 
 - I ran the authors' pretrained model on all 100 uniform 100-point test problems (`upstream/points/point100_10000x10000-uniform-100-pt/`). It scored **6.87%**, far from the paper's 2.65%.
 - **The cause:** the authors' last commit left one line commented out, the call to `refine_leaves` in `SteinerTree.post_process`. That's their "tree" ablation from the paper, not their actual method. Their own ablation result file (`exp_out/...threshold=0.95-tree-solved.txt`) also scores exactly 6.87%.
@@ -197,7 +197,7 @@ FLUTE beating NN-Steiner here is expected. The paper's claim is that NN-Steiner 
 
 **Why it matters:** the first half of the reproduction is confirmed: the authors' model is as good as the paper says, and our build and scoring give the same trees as theirs. Anything scored before the patch measured the wrong setup.
 
-### The cleanup step does a lot of the work (2026-09-29, Andrew)
+### The cleanup step does a lot of the work (2026-09-29)
 
 | Model | Cleanup off | Cleanup on |
 |---|---|---|
@@ -206,7 +206,7 @@ FLUTE beating NN-Steiner here is expected. The paper's claim is that NN-Steiner 
 
 **Why it matters:** a big share of NN-Steiner's quality comes from the exact-solver cleanup, not only from the network. That's good report material.
 
-### One test case, before and after the fix (2026-09-28, updated 2026-09-29, Andrew)
+### One test case, before and after the fix (2026-09-28, updated 2026-09-29)
 
 Test case `point100_10000x10000-uniform-1.txt` (100 points), threshold 0.95. Lower is better.
 
@@ -226,7 +226,7 @@ On Sep 28 our run of their model gave 78,541 on both the Mac and Colab, so it wa
 
 ## Training results
 
-### Data-scaling study, 1,200 examples: 3.77% (2026-09-29, Andrew)
+### Data-scaling study, 1,200 examples: 3.77% (2026-09-29)
 
 Run folder `work/outputs/2026-09-29/16-01-59`, config `scale`, `train.epochs=200` (a cap; early stopping decides).
 
@@ -238,7 +238,7 @@ Run folder `work/outputs/2026-09-29/16-01-59`, config `scale`, `train.epochs=200
 
 **Why it matters:** the sanity check passes. The new setup (clean seeds, new validation set, early stopping) reproduces the old result. The leak made the old validation F1 look better, but it didn't change the final quality. At 1,200 examples the ceiling is about 3.75%.
 
-### Data-scaling study, 12,000 examples: 3.38% (2026-09-30, Andrew)
+### Data-scaling study, 12,000 examples: 3.38% (2026-09-30)
 
 Run folder `work/outputs/2026-09-29/17-07-18`, config `scale`, `train.epochs=60`.
 
@@ -250,7 +250,7 @@ Run folder `work/outputs/2026-09-29/17-07-18`, config `scale`, `train.epochs=60`
 
 **Why it matters:** more data helps, and it isn't done helping.
 
-### Bigger datasets need more training steps to peak (2026-09-30, Andrew)
+### Bigger datasets need more training steps to peak (2026-09-30)
 
 - One epoch is 24 learning steps on 1,200 examples, 240 on 12,000 and 720 on 36,000 (batches of 50).
 - The 1,200 model peaked after **768 steps** (epoch 32). The 12,000 model needed **10,560 steps** (epoch 44).
@@ -259,7 +259,7 @@ Run folder `work/outputs/2026-09-29/17-07-18`, config `scale`, `train.epochs=60`
 
 **Why it matters:** if the cap doesn't grow with the data, a bigger dataset can look worse than it is. If a run hits its cap while validation F1 is still rising, mark it "hit the cap", not finished.
 
-### Data-scaling study, 36,000 examples: 3.38%, no better than 12,000 (2026-10-09, Andrew)
+### Data-scaling study, 36,000 examples: 3.38%, no better than 12,000 (2026-10-09)
 
 Run folder `work/outputs/2026-10-08/11-43-16`, config `scale`, `train.epochs=60`.
 
@@ -273,9 +273,9 @@ Run folder `work/outputs/2026-10-08/11-43-16`, config `scale`, `train.epochs=60`
 
 **Why it matters:** in our setup, more data stops helping by 12,000 examples. The remaining 0.74-point gap to the authors comes from something else, so we're not generating 120,000. (That holds for corner-shaped data. 120,000 paper-style examples later closed the gap: [details](#the-papers-full-120000-examples-done).) A practical bonus: later experiments can train on 12,000 examples (about 7 h) instead of 36,000 (about 22 h) with no loss in score.
 
-**Caveat:** because the run hit its cap, it may not have been fully trained. Its last checkpoint (epoch 60) scores 3.70%, 0.31 points worse than the best one, so the score moves a lot between checkpoints ([details](#which-checkpoint-you-score-moves-the-score-by-up-to-03-points-2026-10-09-andrew)). A longer run might find a checkpoint a few tenths better. That still wouldn't close the 0.74-point gap.
+**Caveat:** because the run hit its cap, it may not have been fully trained. Its last checkpoint (epoch 60) scores 3.70%, 0.31 points worse than the best one, so the score moves a lot between checkpoints ([details](#which-checkpoint-you-score-moves-the-score-by-up-to-03-points-2026-10-09)). A longer run might find a checkpoint a few tenths better. That still wouldn't close the 0.74-point gap.
 
-### First real training runs: the model learns (2026-09-28, Andrew)
+### First real training runs: the model learns (2026-09-28)
 
 Trained on the authors' default data sizes (1,200 train / 96 val / 32 test examples, 100×100 grid, `m=15`, `kb=4`) on my Mac's GPU. Config: `configs/medium.yaml`.
 
@@ -295,17 +295,17 @@ Trained on the authors' default data sizes (1,200 train / 96 val / 32 test examp
 
 - Validation F1 rose at almost every check and was still climbing at epoch 30.
 - The model was starting to memorize: the gap between train and validation F1 grew from 0.07 at epoch 10 to about 0.18 at epoch 30. That's the expected effect of a small dataset (1% of the paper's).
-- **Later corrections:** this validation set was leaky, so its F1 was inflated (see [the leak finding](#the-default-seeds-leaked-validation-data-into-training-2026-09-29-andrew)). Scored properly with cleanup on, the 30-epoch model is at **3.74%**.
+- **Later corrections:** this validation set was leaky, so its F1 was inflated (see [the leak finding](#the-default-seeds-leaked-validation-data-into-training-2026-09-29)). Scored properly with cleanup on, the 30-epoch model is at **3.74%**.
 
 **Why it matters:** the training pipeline works and the model learns. The smoke test only reached F1 of about 0.12.
 
-### Training runs are exactly reproducible (2026-09-28, Andrew)
+### Training runs are exactly reproducible (2026-09-28)
 
 The first 10 epochs of the 30-epoch run matched the 10-epoch run to every digit (e.g. validation F1 0.14915637... and 0.2022702...), because the seed is fixed (`train.seed=42`).
 
 **Why it matters:** on the same machine, differences between two experiments come from the settings we changed, not from randomness. Results on a Mac and a Colab GPU still differ slightly.
 
-### Smoke tests are pipeline checks only (2026-09-28, Andrew)
+### Smoke tests are pipeline checks only (2026-09-28)
 
 The smoke test (80 training examples, 4 epochs) gives test F1 **0.119 on my Mac** and **0.122 on a Colab T4**. The difference comes from GPUs rounding slightly differently. It only checks that everything runs, so it says nothing about model quality.
 
@@ -313,7 +313,7 @@ The smoke test (80 training examples, 4 epochs) gives test F1 **0.119 on my Mac*
 
 ## Data
 
-### The default seeds leaked validation data into training (2026-09-29, Andrew)
+### The default seeds leaked validation data into training (2026-09-29)
 
 - Each example's random points come from `seed + example number`.
 - The authors' default training seed is 4200, so 1,200 training examples use seeds 4200–5399. That range covers all 96 validation seeds (5200–5295).
@@ -322,7 +322,7 @@ The smoke test (80 training examples, 4 epochs) gives test F1 **0.119 on my Mac*
 
 **Why it matters:** validation F1 numbers from before Sep 29 look better than they should. The final scores weren't affected (see the 1,200 entry above).
 
-### GeoSteiner can get stuck forever on rare examples (2026-09-29, Andrew)
+### GeoSteiner can get stuck forever on rare examples (2026-09-29)
 
 - Making the 12,000 set, data generation froze at 11,908 of 12,000. Example #6588 never finished: GeoSteiner's LP solver hit a "divide by zero" warning, and even on its own it ran for 25+ minutes. (We build GeoSteiner without CPLEX, the commercial solver the authors used.)
 - **Patch 0005 fixes it.** If nothing finishes for 2 minutes, the stuck examples are stopped and redone with new random points of the same tree shape (seed + attempt × 10,000,000), and a `GeoSteiner stalled on samples [...]` warning is logged.
@@ -331,17 +331,17 @@ The smoke test (80 training examples, 4 epochs) gives test F1 **0.119 on my Mac*
 
 **Why it matters:** about 1 in 12,000 examples does this. It's now handled automatically, so the warning is normal.
 
-### The scaling-study training sets are nested (2026-09-29, Andrew)
+### The scaling-study training sets are nested (2026-09-29)
 
 The first 12,000 examples of the 36,000 set are byte-for-byte the 12,000 set (including the replaced #6588), and the first 1,200 are the 1,200 set.
 
 **Why it matters:** each bigger set is "the same data plus more", so the amount of data is the only difference between the scaling runs.
 
-### Dataset statistics (Andrew)
+### Dataset statistics
 
 From the 1,200 training set, for the dataset card:
 - 180 points are scattered per example, and some are dropped to fit the quadtree shape, leaving **about 165**.
-- **157–185 quadtree cells** and **2,652–3,128 portals** per example. The quadtrees are **9–11 levels deep**, because the points cover only 0–99 inside the 10,000 × 10,000 quadtree box ([details](#our-training-examples-are-shaped-very-differently-from-the-test-problems-2026-10-10-andrew)).
+- **157–185 quadtree cells** and **2,652–3,128 portals** per example. The quadtrees are **9–11 levels deep**, because the points cover only 0–99 inside the 10,000 × 10,000 quadtree box ([details](#our-training-examples-are-shaped-very-differently-from-the-test-problems-2026-10-10)).
 - **Only 3.1% of portals are labeled "used".** That's the class imbalance, and it's why the loss counts each "used" portal 16 times (`portal_weight=15`, so 15 + 1).
 - Disk size: the 1,200 set is 189 MB, 12,000 is 1.9 GB, 36,000 is 5.6 GB. Paper-style examples are about half the size: 12,000 is 984 MB, 120,000 is 9.6 GB.
 
@@ -359,11 +359,11 @@ Generation times on my Mac (18 CPU cores):
 
 ## How we measure models
 
-### A score is accurate to about ±0.1 points (2026-09-29, Andrew)
+### A score is accurate to about ±0.1 points (2026-09-29)
 
 With 100 test problems, "% longer than optimal" is accurate to about **±0.1 percentage points** (the standard error of the per-problem differences). Differences under about 0.3 points are too close to call. Because every model takes the same exam, I also compare problem by problem and count how many problems each model wins. The command is in [How to reproduce our numbers](#how-to-reproduce-our-numbers).
 
-### Which checkpoint you score moves the score by up to 0.3 points (2026-10-09, Andrew)
+### Which checkpoint you score moves the score by up to 0.3 points (2026-10-09)
 
 Training keeps two checkpoints: `nnArora.pt` (best validation F1, the one we always score) and `nnArora_best.pt` (the **last** one, despite its name). I scored the last one for all three scaling runs:
 
@@ -379,7 +379,7 @@ Training keeps two checkpoints: `nnArora.pt` (best validation F1, the one we alw
 
 **Why it matters:** the ±0.1 above only covers the luck of the 100 test problems. Comparing two **training runs** has a second source of luck: which checkpoint happened to be saved. So a difference under about 0.3 points between two training setups isn't trustworthy from one checkpoint each. **Plan before any more training:** a small trainer patch (0006) that saves a checkpoint at every validation, so I can score the top 3 by validation F1 and average them. That's about 830 MB per checkpoint, about 25 GB for a 12,000 run, deleted after scoring.
 
-### What the eval costs mean (2026-09-28, Andrew)
+### What the eval costs mean (2026-09-28)
 
 `flow=eval` prints five costs for one test case. Two of them don't depend on the model at all:
 
@@ -393,7 +393,7 @@ Training keeps two checkpoints: `nnArora.pt` (best validation F1, the one we alw
 
 The authors' result files (`exp_out/*-solved.txt`, written by `flow=nn_exp`) record the **final** cost.
 
-### F1 is a training signal, not the final quality measure (2026-09-28, updated 2026-10-08, Andrew)
+### F1 is a training signal, not the final quality measure (2026-09-28, updated 2026-10-08)
 
 After the network predicts portals, NN-Steiner hands them to an exact solver (GeoSteiner) that repairs many mistakes.
 - On test case 1: the authors' model has F1 **0.327** and ends +2.4% over optimal. My 30-epoch model has F1 **0.121** and ends +5.2% (+15.6% before cleanup).
@@ -407,7 +407,7 @@ Higher F1 does mean a better tree, but the relationship isn't simple. Use F1 to 
 
 ## Compute and hardware
 
-### My Mac is faster than a Colab T4 for our workloads (2026-09-28, Andrew)
+### My Mac is faster than a Colab T4 for our workloads (2026-09-28)
 
 Same smoke test on both machines:
 
@@ -420,7 +420,7 @@ Data generation is CPU-heavy (GeoSteiner labels every example), and the Colab VM
 
 Measured training speed on the Mac: about 49 s per epoch on 1,200 examples, 7.9 min on 12,000, and about 22.5 min on 36,000 (all at batch 50). Paper-style at batch 500: about 57 s per epoch on 12,000, and 8–10 min on 120,000.
 
-### Full-scale training may not fit in Colab's memory (2026-09-28, Andrew)
+### Full-scale training may not fit in Colab's memory (2026-09-28)
 
 The authors' trainer loads the **entire training set into memory** before training. The 1,200 set is 189 MB, so the paper's 120,000 examples would be about **19 GB**. That fits on a 64 GB Mac but likely not on free Colab (about 12–13 GB of RAM). At the measured speeds, one epoch on 120,000 would take roughly **80 minutes** on my Mac.
 
@@ -545,7 +545,7 @@ Finished Oct 10. **Result: the default threshold (0.95) is already our best, so 
 
 ## Comparing the two networks directly (done)
 
-### On our validation data, the authors' network guesses portals worse than ours (2026-10-10, Andrew)
+### On our validation data, the authors' network guesses portals worse than ours (2026-10-10)
 
 I graded the portal guesses of the authors' model and our three scaling models on our validation set with `scripts/val_f1.py` ([how it works](#scriptsval_f1py-grade-portal-guesses-directly-about-7-s-per-model)). For our models it reproduces training's logged validation F1 exactly, so it grades the same way.
 
@@ -560,14 +560,14 @@ I graded the portal guesses of the authors' model and our three scaling models o
 - F1 ranks our own models sensibly (they were all trained on the same kind of data), but not theirs.
 
 **Why it matters:** F1 on our validation data can't explain the gap to the authors; it even points the wrong way. Two possible reasons:
-1. **Our validation set is home ground for our network and unfamiliar ground for theirs.** It's made the same way as our training data, which is shaped very differently from the test problems ([next finding](#our-training-examples-are-shaped-very-differently-from-the-test-problems-2026-10-10-andrew)). If the authors trained on test-shaped examples, their network would look worse here and better on the test.
+1. **Our validation set is home ground for our network and unfamiliar ground for theirs.** It's made the same way as our training data, which is shaped very differently from the test problems ([next finding](#our-training-examples-are-shaped-very-differently-from-the-test-problems-2026-10-10)). If the authors trained on test-shaped examples, their network would look worse here and better on the test.
 2. **F1 is too strict.** The answer key marks only the portal nearest to where one perfect tree crosses a cell edge. A neighbouring portal, or a different but equally short tree, counts as fully wrong, though the cleanup step can use it just as well.
 
-**Update (same day):** reason 1 checks out. On test-shaped validation data the authors' network wins clearly ([below](#on-test-shaped-data-the-ranking-flips-the-authors-network-wins-2026-10-10-andrew)).
+**Update (same day):** reason 1 checks out. On test-shaped validation data the authors' network wins clearly ([below](#on-test-shaped-data-the-ranking-flips-the-authors-network-wins-2026-10-10)).
 
 It also corrects an easy misreading of the threshold experiment: our 60–90% portals don't make trees worse because they're "wrong more often than the authors'". On this data, the authors' are wrong even more often.
 
-### Our training examples are shaped very differently from the test problems (2026-10-10, Andrew)
+### Our training examples are shaped very differently from the test problems (2026-10-10)
 
 - Our examples scatter 180 points over coordinates 0–99, but the quadtree's box is always 10,000 × 10,000 (`quadtree.bbox` in the authors' config). So every quadtree first zooms about 6 levels into the bottom-left corner, adding 3 empty cells per level, before reaching the points.
 - Result: our training and validation quadtrees are **9–11 levels deep** (157–185 cells; 50 examples checked). The 100-point test problems spread over the whole box: **2–4 levels deep** (61–89 cells; all 100 checked). The 200-point set: 3–4 levels.
@@ -576,7 +576,7 @@ It also corrects an easy misreading of the threshold experiment: our 60–90% po
 
 **Why it matters:** this is the strongest lead so far for the 0.74-point gap. It's a classic distribution shift: our network learned from examples that don't look like the problems it's tested on. The next finding tests it.
 
-### On test-shaped data, the ranking flips: the authors' network wins (2026-10-10, Andrew)
+### On test-shaped data, the ranking flips: the authors' network wins (2026-10-10)
 
 I made a small validation set shaped like the test problems: 128 examples, 100 points spread over the whole 10,000 × 10,000 box (about 88 left after fitting each example to its tree shape), quadtrees 2–3 levels deep, seed 7200. Then I graded both networks on it with `scripts/val_f1.py`.
 
@@ -596,7 +596,7 @@ I made a small validation set shaped like the test problems: 128 examples, 100 p
 
 ## Training on test-shaped examples (done)
 
-### 12,000 test-shaped examples: 3.62%, no better than corner-shaped (2026-10-18, Andrew)
+### 12,000 test-shaped examples: 3.62%, no better than corner-shaped (2026-10-18)
 
 Run folder `work/outputs/2026-10-18/01-58-52`, config `shape`, `train.epochs=60`. It's the 12,000 corner-shaped run with one change: the points spread over the whole 10,000 × 10,000 box (`data_gen.x_range` and `y_range` = 10000). Same 180 points per example (about 165 after fitting each example to its tree shape), same seeds (100000+), 240 tree shapes of 50 examples each. Validation (seed 7200) and the end-of-training test set (seed 8200) are test-shaped too, 100 points each.
 
@@ -609,13 +609,13 @@ Run folder `work/outputs/2026-10-18/01-58-52`, config `shape`, `train.epochs=60`
   - vs the authors' model (2.65%): **+0.97 ± 0.10**, they win 80 of 100.
   - vs the no-network runs (threshold 1.0): 0.15 ± 0.05 better than our 36,000 model's (3.77%), 0.10 ± 0.06 better than the authors' (3.72%). So this network adds very little.
 
-**Why it matters:** at the default threshold, fixing the shape didn't help. The fix did what it should (the trees look like the test problems now), but the score didn't improve. It may be slightly worse, but 0.24 is within the 0.3 points a single checkpoint can move ([details](#which-checkpoint-you-score-moves-the-score-by-up-to-03-points-2026-10-09-andrew)), so the safe reading is "no better". **Update (same day):** the next finding shows the solver barely uses this network at 0.95, so a threshold sweep has to come first. Other leads:
+**Why it matters:** at the default threshold, fixing the shape didn't help. The fix did what it should (the trees look like the test problems now), but the score didn't improve. It may be slightly worse, but 0.24 is within the 0.3 points a single checkpoint can move ([details](#which-checkpoint-you-score-moves-the-score-by-up-to-03-points-2026-10-09)), so the safe reading is "no better". **Update (same day):** the next finding shows the solver barely uses this network at 0.95, so a threshold sweep has to come first. Other leads:
 1. **The authors trained differently in some other way** (points per example, number of examples, epochs, learning rate, data settings). The paper should say.
 2. **12,000 test-shaped examples may be too few.** The run peaked after only 12 epochs and then just memorized, the classic sign of too little data. Corner-shaped examples are all much alike, so 12,000 was enough for them; test-shaped ones vary far more. The authors' model saw 120,000.
 
 I skipped scoring its last checkpoint: the gap to the authors is 0.97, far above checkpoint luck, so it can't change the conclusion.
 
-### On the test-shaped test set, the new network is good but under-confident (2026-10-18, Andrew)
+### On the test-shaped test set, the new network is good but under-confident (2026-10-18)
 
 I graded portal guesses with `scripts/val_f1.py` on the test-shaped test set (seed 8200: 64 examples, 82,688 portals, 3.8% really used). Unlike the validation set, it never picked a checkpoint, so it's the fairest F1 comparison.
 
@@ -633,7 +633,7 @@ I graded portal guesses with `scripts/val_f1.py` on the test-shaped test set (se
 
 **Why it matters:** the 3.62% result says more about the threshold than about the shape. 0.95 was the right cutoff for our corner-shaped model ([details](#the-threshold-experiment-done)), but this network is less sure of itself, maybe because it stopped after only 2,880 learning steps. Its 0.8–0.95 portals are about as often right as the authors', and the authors' portals in that range help the trees. So I swept its threshold (next finding). The rule, set in advance: if its best threshold beats 3.38% by a real margin (0.3+ points), the shape helps; if not, it doesn't help much.
 
-### Threshold sweep for the test-shaped model: 0.8 wins, 3.28% (2026-10-18, Andrew)
+### Threshold sweep for the test-shaped model: 0.8 wins, 3.28% (2026-10-18)
 
 Same rule as the first threshold experiment: the lowest average on the 200-point set picks the threshold, then I report the 100-point score at that threshold.
 
@@ -656,7 +656,7 @@ Same rule as the first threshold experiment: the lowest average on the 200-point
 
 ## How the paper trained its model
 
-### The paper trained about 4,000× longer than our best checkpoint (2026-10-18, Andrew)
+### The paper trained about 4,000× longer than our best checkpoint (2026-10-18)
 
 From the paper ([arXiv 2312.10589](https://arxiv.org/abs/2312.10589), Section 3.2 "Training" and Section 4 "Implementation"), next to our test-shaped run:
 
@@ -679,9 +679,9 @@ From the paper ([arXiv 2312.10589](https://arxiv.org/abs/2312.10589), Section 3.
 - **Even our 36,000 run** (40,320 steps of 50, about 2 million examples processed) trained 300× less than the paper.
 - **Not stated:** validation set, early stopping, training time.
 
-**Why the recipe matters:** the settings that shape the model all match. What differs is mostly **how much training** it gets: each of their examples was seen about 5,000 times, ours about 12 times. Our test-shaped network being rarely 95% sure ([details](#on-the-test-shaped-test-set-the-new-network-is-good-but-under-confident-2026-10-18-andrew)) fits being under-trained. And our early stopping ends runs when validation F1 flattens, but F1 is only a loose guide to tree quality, so it may stop runs long before the trees stop improving. Copying the recipe exactly isn't possible on my Mac: at our measured speed (about 38 examples a second at batch 50), 600 million examples would take about half a year. I tested that with a scaled-down copy: on 12,000 examples, much longer training doesn't help ([below](#scoring-the-long-run-longer-training-on-12000-examples-doesnt-help-2026-10-19-andrew)). On 120,000 it reproduces their result with 36× less training ([details](#the-papers-full-120000-examples-done)).
+**Why the recipe matters:** the settings that shape the model all match. What differs is mostly **how much training** it gets: each of their examples was seen about 5,000 times, ours about 12 times. Our test-shaped network being rarely 95% sure ([details](#on-the-test-shaped-test-set-the-new-network-is-good-but-under-confident-2026-10-18)) fits being under-trained. And our early stopping ends runs when validation F1 flattens, but F1 is only a loose guide to tree quality, so it may stop runs long before the trees stop improving. Copying the recipe exactly isn't possible on my Mac: at our measured speed (about 38 examples a second at batch 50), 600 million examples would take about half a year. I tested that with a scaled-down copy: on 12,000 examples, much longer training doesn't help ([below](#scoring-the-long-run-longer-training-on-12000-examples-doesnt-help-2026-10-19)). On 120,000 it reproduces their result with 36× less training ([details](#the-papers-full-120000-examples-done)).
 
-### A paper-style run is set up and tested (2026-10-18, Andrew)
+### A paper-style run is set up and tested (2026-10-18)
 
 - **Patch 0007:** upstream's `level` data mode, the paper's way of making training data, crashed in the released code (`Key 'kb' is not in struct`). A one-line fix.
 - **Patch 0006:** `train.keep_every=N` keeps `nnArora_ep<epoch>.pt` every N epochs, so a long run's history survives.
@@ -690,7 +690,7 @@ From the paper ([arXiv 2312.10589](https://arxiv.org/abs/2312.10589), Section 3.
 
 **Why it matters:** we can now copy the paper's recipe, scaled down. It's also worth a sentence in the report: the released code couldn't generate the paper's training data as published.
 
-### Paper-style data and speed test: batch 500 for 1,600 epochs (2026-10-18, Andrew)
+### Paper-style data and speed test: batch 500 for 1,600 epochs (2026-10-18)
 
 **Data:** `work/data/level3_10000x10000-uniform-12000-tensor`, 12,000 examples, seed 100000 (the same seeds as our other 12,000 sets), made in 2 min 46 s. About 164 points per example (mean 163.8, stdev 3.8), 984 MB. GeoSteiner printed two "divide by zero … trying to recover" warnings and recovered; nothing stalled.
 
@@ -707,7 +707,7 @@ From the paper ([arXiv 2312.10589](https://arxiv.org/abs/2312.10589), Section 3.
 - At batch 50 these one-shape examples train 1.4× faster than our test-shaped ones (55 vs 38 a second), since their trees are smaller.
 - **The planned run** (1,600 epochs at batch 500) processes about 130× the examples and 13× the learning steps of our test-shaped model's best checkpoint. That's still only about 3% of the paper's examples and a third of its steps.
 
-### Interim: the long run is memorizing (2026-10-19, Andrew)
+### Interim: the long run is memorizing (2026-10-19)
 
 Run folder `work/outputs/2026-10-18/23-16-42`, checked at epoch 609 of 1,600 (about 57 s per epoch).
 
@@ -718,7 +718,7 @@ Run folder `work/outputs/2026-10-18/23-16-42`, checked at epoch 609 of 1,600 (ab
 
 **Why it matters:** classic overfitting. The network's 207 million weights can memorize 12,000 examples, and validation F1 falls as it does. F1 isn't tree length, so this doesn't settle the question, but the numbered checkpoints already on disk (epochs 50–600, plus `nnArora.pt` from epoch 120) can. So I stopped it at epoch 611 (the last numbered checkpoint is epoch 600) and will score epochs 50, 120, 200, 400 and 600 with `scripts/score_checkpoint.sh`. A stopped run can't be resumed exactly: `train.checkpoint` starts a new run from the weights, with the epoch count, Adam's momentum and the best-F1 tracking reset.
 
-### Scoring the long run: longer training on 12,000 examples doesn't help (2026-10-19, Andrew)
+### Scoring the long run: longer training on 12,000 examples doesn't help (2026-10-19)
 
 Five checkpoints of the long run, each scored with `scripts/score_checkpoint.sh`: its own threshold, picked on the 200-point set, then the score to report on the 100 test problems.
 
@@ -743,7 +743,7 @@ Five checkpoints of the long run, each scored with `scripts/score_checkpoint.sh`
 
 ## The paper's full 120,000 examples (done)
 
-### 120,000 paper-style examples: 2.73%, a tie with the authors' model (2026-10-20, Andrew)
+### 120,000 paper-style examples: 2.73%, a tie with the authors' model (2026-10-20)
 
 **What:** the long paper-style run (`configs/paper.yaml`) again, with the paper's own number of examples: 120,000 instead of 12,000. Everything else is the same: one full depth-3 tree for every example, batch 500 (240 learning steps per epoch), no early stopping, and validation plus a numbered checkpoint every 5 epochs, for 140 epochs. The data (seed 100000, the same seed as the 12,000 set) is 9.6 GB and fits in memory.
 
@@ -779,7 +779,7 @@ All validation F1s are on the same test-shaped validation set (seed 7200).
 - **Checkpoint luck is small here.** The last five checkpoints are within 0.09 points of each other on the 100 test problems, so picking a different one wouldn't change the conclusion.
 - **Its door guesses are now better than the authors'**, yet the trees only tie. On the test-shaped test set (seed 8200), F1 is 0.413 vs 0.347. At each model's own threshold it keeps about as many portals as theirs (2,337 at 0.9 vs 2,060 at 0.95), and more of them are right (precision 0.448 vs 0.421). That fits point 5 of [What the results mean](#what-the-results-mean): F1 only roughly predicts tree length.
 
-**Why it matters:** this answers the project's main open question. The 0.63-point gap between our best model and the authors' was the number of training examples. With the paper's 120,000, our own training reproduces the authors' result (2.73% vs 2.65%, a tie), with about 36× less training than the paper (16.8 million examples processed vs 600 million). The extra examples didn't make the network learn faster. They let it train much longer without memorizing. By the rule set in advance (0.3+ better than 3.28%), this is the "the number of examples was the gap" outcome. Caveats: it's one training run with one seed, and so far only 100-point uniform problems. Bigger problems and other point patterns are next (Shraddha).
+**Why it matters:** this answers the project's main open question. The 0.63-point gap between our best model and the authors' was the number of training examples. With the paper's 120,000, our own training reproduces the authors' result (2.73% vs 2.65%, a tie), with about 36× less training than the paper (16.8 million examples processed vs 600 million). The extra examples didn't make the network learn faster. They let it train much longer without memorizing. By the rule set in advance (0.3+ better than 3.28%), this is the "the number of examples was the gap" outcome. Caveats: it's one training run with one seed, and so far only 100-point uniform problems. Bigger problems and other point patterns are next, in the evaluation.
 
 **Restarting a stopped run:** a run can't be resumed exactly. `train.checkpoint=<file>` starts a new run from those weights, so the epoch count, numbered checkpoints, TensorBoard, Adam's momentum and the best-F1 tracking all start over. Part 2's `nnArora_ep<N>.pt` is overall epoch N + 40, and part 3's is N + 120. Each restart's first validation matched the checkpoint it came from (0.3868 and 0.4217), so the weights loaded correctly. Adam's reset cost one slightly worse epoch (training loss 0.278 → 0.297, then down again). Pausing loses the epochs after the last numbered checkpoint (2 and 3 epochs here).
 
@@ -788,14 +788,14 @@ All validation F1s are on the same test-shaped validation set (seed 7200).
 ## What comes next
 
 **Now that Experiments 1–5 are done** (data scaling, threshold, data shape, long training, and the paper's full 120,000 examples), in this order:
-1. **Hand the 120,000 model to Shraddha** as `m15_kb4_n120000.pt` (part 3's `nnArora_ep20.pt`, epoch 140), with its settings, its training curves (three run folders; I'll stitch them into one) and **threshold 0.9**. It ties the authors' model on 100-point problems, so it's the one to test on bigger problems (500–5,000 points) and other point patterns.
+1. **Hand the 120,000 model over for evaluation** as `m15_kb4_n120000.pt` (part 3's `nnArora_ep20.pt`, epoch 140), with its settings, its training curves (three run folders; I'll stitch them into one) and **threshold 0.9**. It ties the authors' model on 100-point problems, so it's the one to test on bigger problems (500–5,000 points) and other point patterns.
 2. **Writing:** the scaling plot (training examples on a log scale vs % longer than optimal, with dashed lines at the authors' 2.65% and the "no network" 3.77%), now with the 120,000 point, and its report paragraph. Plus my one-page architecture summary with a diagram.
 3. **Experiment 6, if there's time: `portal_weight`.** One run of the 120,000 recipe with `train.portal_weight=0` (no extra weight for "used" portals), about 20 h, scored the same way. Only the loss changes. It shows whether the paper's weighting for the class imbalance (3.1% of portals used) matters.
 
 **Later, if there's time** (the authors' result files cover the first three, so we can check against theirs):
 - `kb` (max points per leaf cell): 1, 4 or 7. Needs new data.
 - `m` (portals per cell side): 3, 7 or 15. Needs new data.
-- Train on uniform points, test on other point patterns. Overlaps with Shraddha's baselines.
+- Train on uniform points, test on other point patterns. Overlaps with the evaluation baselines.
 - 120,000 test-shaped examples: does the tree shape still matter once there's enough data?
 
 **Report:** I lead Methodology & model, and help with Dataset and Experimental setup.
@@ -1200,18 +1200,18 @@ Inside a training run: `train/` holds the TensorBoard curves, and `train/model/n
 
 ## Open questions
 
-- **Does NN-Steiner beat FLUTE on bigger problems (500+ points) in our setup,** as the paper claims? And does our 120,000 model hold up there and on other point patterns, like the authors' does? (Shraddha, with the model I hand over)
-- **Is our 2.73% repeatable?** It's one training run with one seed. A second seed would show how much run-to-run luck there is (about 20 h). (Andrew, if there's time)
-- **Which more experiment do we commit to?** Five are done (data scaling, threshold, data shape, long training, the paper's full 120,000 examples). I propose `portal_weight` if there's time; see [What comes next](#what-comes-next). (Andrew proposes, the team agrees)
-- **Does loading the latest checkpoint instead of the best one** change the authors' reported test numbers? (Andrew)
+- **Does NN-Steiner beat FLUTE on bigger problems (500+ points) in our setup,** as the paper claims? And does our 120,000 model hold up there and on other point patterns, like the authors' does? (evaluation, with the 120,000 model)
+- **Is our 2.73% repeatable?** It's one training run with one seed. A second seed would show how much run-to-run luck there is (about 20 h). (if there's time)
+- **Which more experiment do we commit to?** Five are done (data scaling, threshold, data shape, long training, the paper's full 120,000 examples). I propose `portal_weight` if there's time; see [What comes next](#what-comes-next). (the team decides)
+- **Does loading the latest checkpoint instead of the best one** change the authors' reported test numbers?
 
 **Answered:**
 - *Do 10× more examples close the gap?* Yes, for paper-style data: 120,000 examples score 2.73%, a tie with the authors' 2.65% (+0.08 ± 0.09) ([details](#the-papers-full-120000-examples-done)).
-- *Do we reproduce the authors' pretrained results across all 100 test cases?* Yes, once the cleanup step is restored: 2.648% vs 2.646% ([details](#the-authors-model-matches-the-paper-once-a-switched-off-cleanup-step-is-restored-2026-09-29-andrew)).
+- *Do we reproduce the authors' pretrained results across all 100 test cases?* Yes, once the cleanup step is restored: 2.648% vs 2.646% ([details](#the-authors-model-matches-the-paper-once-a-switched-off-cleanup-step-is-restored-2026-09-29)).
 - *Where does validation F1 level off?* On 1,200 examples, around epoch 16–20 (about 0.22 on the clean validation set). The old run's "still rising" 0.304 was on the leaky set. Bigger datasets level off later and higher.
-- *Does the data trend continue at 36,000, or level off?* It levels off: 36,000 scores 3.38%, the same as 12,000 ([details](#data-scaling-study-36000-examples-338-no-better-than-12000-2026-10-09-andrew)).
+- *Does the data trend continue at 36,000, or level off?* It levels off: 36,000 scores 3.38%, the same as 12,000 ([details](#data-scaling-study-36000-examples-338-no-better-than-12000-2026-10-09)).
 - *How big should the full training set be?* For corner-shaped data, 12,000 is enough: 36,000 didn't help. For paper-style data, the paper's 120,000 closes the gap to the authors ([details](#the-papers-full-120000-examples-done)).
-- *Does much longer training close the gap?* Not on 12,000 examples: the network memorizes them and the trees get a little worse (3.45% at epoch 50, 3.68% at epoch 600) ([details](#scoring-the-long-run-longer-training-on-12000-examples-doesnt-help-2026-10-19-andrew)). On 120,000 examples, yes: 3.62% at epoch 5, 2.74% by epoch 40 ([details](#the-papers-full-120000-examples-done)).
+- *Does much longer training close the gap?* Not on 12,000 examples: the network memorizes them and the trees get a little worse (3.45% at epoch 50, 3.68% at epoch 600) ([details](#scoring-the-long-run-longer-training-on-12000-examples-doesnt-help-2026-10-19)). On 120,000 examples, yes: 3.62% at epoch 5, 2.74% by epoch 40 ([details](#the-papers-full-120000-examples-done)).
 - *Does early stopping on validation F1 stop our runs too soon?* Not in the long run: the best trees came by epoch 50–120, around validation F1's peak, and got worse after.
 - *Does a different threshold suit our model better?* For the corner-shaped model, no: 0.95 is its best on both the 100- and 200-point sets ([details](#the-threshold-experiment-done)). Later models, yes: 0.8 for the test-shaped model, 0.9 for the 120,000 model. So every model now gets its own sweep.
 - *Do the authors' threshold result files match our setup?* Yes. Their model, run by me, matches at 0.6 and 1.0 ([details](#the-threshold-experiment-done)).
