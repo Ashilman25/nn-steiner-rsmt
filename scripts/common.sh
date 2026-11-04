@@ -14,5 +14,5 @@ PYTHON="${PYTHON:-python3}"
 # Folders the authors' code writes into, relative to where it is launched (work/).
 make_work_dirs() {
     mkdir -p "$WORK/data" "$WORK/points" "$WORK/models" "$WORK/outputs" "$WORK/exp_out"
-    ln -sfn "$UPSTREAM" "$WORK/upstream"
+    [ "$(readlink "$WORK/upstream")" = "$UPSTREAM" ] || ln -sfn "$UPSTREAM" "$WORK/upstream"
 }
