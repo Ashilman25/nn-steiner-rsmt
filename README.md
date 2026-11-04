@@ -45,6 +45,8 @@ Every experiment, with run folders and error bars, is in [docs/Findings.md](docs
 ```
 configs/        our run settings; each inherits the authors' conf/config.yaml and lists only what changes
 scripts/        setup.sh, arora.sh (runs the authors' code with a config), and helpers
+lib/            shared Python the scripts import (e.g. the 8 turns of the square)
+tests/          unit tests: python -m unittest discover -s tests
 notebooks/      colab.ipynb: the Colab entry point
 third_party/
   patches/      our fixes to the authors' code, applied by setup.sh
