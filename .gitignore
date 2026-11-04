@@ -11,3 +11,5 @@ __pycache__/
 .DS_Store
 CLAUDE.md
 .claude
+
+docs/ToDo/
