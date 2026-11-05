@@ -329,7 +329,7 @@ def report(size: int, problems: int, stem: str, solved: List[str], logs: List[st
         r = compare(best, single, golden)
         line = f"best of {k}: {r['a_pct']:.2f}%"
         if k > 1:
-            line += (f" (vs turn 0: {r['diff']:+.2f} ± {r['se']:.2f} points; shorter on {r['shorter']}, same on {r['same']} of {problems})")
+            line += (f" (vs turn 0: {r['diff']:+.2f} +- {r['se']:.2f} points; shorter on {r['shorter']}, same on {r['same']} of {problems})")
             with open(os.path.join(WORK, f"{stem}-best{k}-solved.txt"), "w") as f:
                 f.writelines(f"{x}\n" for x in best)
         print(line)
