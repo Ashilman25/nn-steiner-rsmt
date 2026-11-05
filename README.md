@@ -29,13 +29,29 @@ The score is how much longer a tree is than the optimal one from GeoSteiner (an 
 - **Test-shaped data:** points spread over the whole box, like the test problems.
 - **Paper's setup:** how the paper says it trained: one shared quadtree shape, batches of 500, no early stopping.
 
-FLUTE is still better at 100 points. The paper's claim is that NN-Steiner wins on bigger problems (500+ points), which we're testing next.
+FLUTE is still better at 100 points. The paper's claim is that NN-Steiner wins on bigger problems (500+ points), and in our runs it does.
+
+### Bigger problems, and best of 8
+
+Turning or mirroring a problem doesn't change its optimal tree, but it does change NN-Steiner's answer. So we solve each problem in its 8 orientations and keep the shortest tree ("best of 8"). That needs no training, only 8× the solve time.
+
+![Best of 8 by problem size, and score vs number of tries](results/best_of_8.png)
+
+| Points per problem | FLUTE | Authors', one try | Ours, one try | Authors', best of 8 | Ours, best of 8 |
+|---|---|---|---|---|---|
+| 100 | **1.25** | 2.65 | 2.73 | 1.87 | 1.76 |
+| 200 | **2.30** | 3.06 | 2.95 | 2.41 | **2.30** |
+| 500 | 3.86 | 3.15 | 3.03 | 2.66 | **2.52** |
+| 800 | 4.64 | 3.47 | 3.39 | 3.05 | **2.96** |
+| 1,000 | 5.02 | 3.51 | 3.49 | 3.19 | **3.11** |
 
 ## What we found
 
 - The authors' code, as published, doesn't reproduce their paper. Their last commit left a cleanup step (`refine_leaves`) commented out, which turns the code into one of their ablations. Their own model scores 6.87% that way. With the line restored (patch 0004) it scores 2.648%, vs 2.646% in the paper.
 - The default seeds leaked validation data into training: 96 training examples were near-copies of the validation examples. We moved the training seeds far away.
 - The number of training examples was the gap. On the default data, going from 12,000 to 36,000 examples changed nothing. Changing the data's shape or the portal threshold only helped a little. With the paper's setup and its full 120,000 examples, our model ties the authors': +0.08 ± 0.09 points, and ours is shorter on 52 of the 100 problems. That took about 22 hours on a Mac, roughly 1/36 of the paper's training.
+- NN-Steiner beats FLUTE from 500 points on, as the paper says, and our model holds up there: slightly ahead of the authors' from 200 to 800 points, a tie at 1,000.
+- NN-Steiner cares a lot about which way a problem faces, though it shouldn't: the 8 orientations of a problem never all give the same length. Keeping the shortest of the 8 takes our model from 2.73% to 1.76% on the 100-point test, and helps at every size.
 - With too few examples, long training just memorizes. On 12,000 examples the paper's setup reached training F1 0.98 while validation F1 fell, and the trees got worse. With 120,000, training F1 only reached 0.76, and the trees improved until about epoch 40 and then held steady.
 
 Every experiment, with run folders and error bars, is in [docs/Findings.md](docs/Findings.md).
