@@ -5,17 +5,24 @@ import os
 import sys
 
 import matplotlib
+import numpy as np
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+UPSTREAM = os.path.join(REPO, "third_party", "NN-Steiner")
+
+# The authors' code has to be findable before importing from it
+sys.path.insert(0, UPSTREAM)
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 from omegaconf import OmegaConf  # noqa: E402
+from arora.quadtree import SteinerTree, Terminal  # noqa: E402
+from arora.points import read_points  # noqa: E402
 
-REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-UPSTREAM = os.path.join(REPO, "third_party", "NN-Steiner")
 WORK = os.path.join(REPO, "work")
 RESULTS = os.path.join(REPO, "results")
 
-# % longer than optimal on the authors' 100 uniform 100-point test problems 
+# % longer than optimal on the authors' 100 uniform 100-point test problems
 DEFAULT_DATA = [(1_200, 3.77), (12_000, 3.38), (36_000, 3.38)]
 TEST_SHAPED = [(12_000, 3.28)]
 PAPER_SETUP = [(12_000, 3.45), (120_000, 2.73)]
@@ -72,7 +79,7 @@ def scaling_plot(path: str) -> None:
     ax.set_ylabel("% longer than the optimal tree (lower is better)")
     ax.grid(axis="y", color=GRID, lw=0.8)
     ax.set_axisbelow(True)
-    
+
     for side in ("top", "right"):
         ax.spines[side].set_visible(False)
     ax.tick_params(length=0)
@@ -85,6 +92,73 @@ def scaling_plot(path: str) -> None:
     plt.close(fig)
 
 
+# % over optimal per turn, [turn][problem], from best_of_8.py's solved files; None if any is missing
+def turn_scores(name: str, size: int):
+    golden = np.loadtxt(os.path.join(UPSTREAM, "exp_out", f"{size}_10000x10000-uniform-golden.txt"))
+    files = [os.path.join(WORK, "exp_out", f"best8-{name}-{size}pt-turn{k}-solved.txt") for k in range(8)]
+    if not all(os.path.exists(f) for f in files):
+        return None
+    return (np.array([np.loadtxt(f) for f in files]) / golden - 1) * 100
+
+
+# Best of 8 by problem size vs FLUTE (left), and score vs number of tries (right)
+def best_of_8_plot(path: str) -> bool:
+    sizes = [100, 200, 500, 800, 1000]
+    models = [("p120k-thr0.9", BLUE, "Ours"), ("pretrained-thr0.95", ORANGE, "Authors'")]
+    scores = {m: [turn_scores(m, n) for n in sizes] for m, _, _ in models}
+    if any(s is None for v in scores.values() for s in v):
+        return False
+
+    flute = []
+    for n in sizes:
+        golden = np.loadtxt(os.path.join(UPSTREAM, "exp_out", f"{n}_10000x10000-uniform-golden.txt"))
+        plain = np.loadtxt(os.path.join(UPSTREAM, "flute_out", f"flute{n}_10000x10000-uniform.txt"))
+        flute.append(((plain / golden).mean() - 1) * 100)
+
+    fig, (left, right) = plt.subplots(1, 2, figsize=(11, 4.4), gridspec_kw={"width_ratios": [1.25, 1]})
+
+    left.plot(sizes, flute, color=MUTED, lw=1.5, ls=(0, (4, 3)), marker="o", ms=5, zorder=2)
+    left.text(sizes[-1] + 25, flute[-1], "FLUTE", color=INK_2, va="center", fontsize=9)
+    for m, color, label in models:
+        single = [s[0].mean() for s in scores[m]]
+        best = [s.min(0).mean() for s in scores[m]]
+        left.plot(sizes, single, color=color, lw=2, ls=(0, (2, 2)), marker="o", ms=6, mec=SURFACE, mew=1.2, label=f"{label}, one try", zorder=3)
+        left.plot(sizes, best, color=color, lw=2, marker="o", ms=8, mec=SURFACE, mew=1.5, label=f"{label}, best of 8", zorder=4)
+    left.set_xticks(sizes, [str(n) for n in sizes])
+    left.set_xlim(60, 1120)
+    left.set_ylim(0, 5.4)
+    left.set_xlabel("Points per problem")
+    left.set_ylabel("% longer than the optimal tree (lower is better)")
+    left.legend(loc="upper left", frameon=False, fontsize=9, labelcolor=INK_2, ncol=2, columnspacing=1.4)
+
+    tries = [1, 2, 4, 8]
+    shades = ["#9ec5f0", "#6aa3e6", "#2a78d6", "#1c5aa6", "#123d73"]
+    for n, s, shade in zip(sizes, scores[models[0][0]], shades):
+        ys = [s[:k].min(0).mean() for k in tries]
+        right.plot(tries, ys, color=shade, lw=2, marker="o", ms=7, mec=SURFACE, mew=1.2, zorder=3)
+        right.text(8.9, ys[-1], f"{n} points", color=INK_2, va="center", fontsize=9)
+    right.set_xscale("log", base=2)
+    right.set_xticks(tries, [str(k) for k in tries])
+    right.minorticks_off()
+    right.set_xlim(0.85, 14)
+    right.set_ylim(1.5, 3.7)
+    right.set_xlabel("Tries (turns of the same problem)")
+    right.set_ylabel("% longer than optimal, our model")
+
+    for ax in (left, right):
+        ax.grid(axis="y", color=GRID, lw=0.8)
+        ax.set_axisbelow(True)
+        for side in ("top", "right"):
+            ax.spines[side].set_visible(False)
+        ax.tick_params(length=0)
+
+    fig.suptitle("Best of 8 helps both models at every size; from 500 points on, NN-Steiner clearly beats FLUTE", x=0.02, ha="left", fontsize=12.5)
+    fig.tight_layout()
+    fig.savefig(path, dpi=200)
+    plt.close(fig)
+    return True
+
+
 # Draws one tree's edges and terminals; L-shaped edges bend at (src.x, tgt.y) like upstream
 def draw_tree(ax, stt, title: str) -> None:
     for edge in stt.edges:
@@ -92,7 +166,7 @@ def draw_tree(ax, stt, title: str) -> None:
         xs = [src.x.to_float(), src.x.to_float(), tgt.x.to_float()]
         ys = [src.y.to_float(), tgt.y.to_float(), tgt.y.to_float()]
         ax.plot(xs, ys, color=INK_2, lw=1.2, solid_capstyle="round", zorder=1)
-        
+
     xs = [t.x.to_float() for t in stt.terminals]
     ys = [t.y.to_float() for t in stt.terminals]
     ax.scatter(xs, ys, s=22, color=BLUE, edgecolors=SURFACE, linewidths=0.8, zorder=2)
@@ -109,10 +183,6 @@ def draw_tree(ax, stt, title: str) -> None:
 
 # Our tree from a solve run next to GeoSteiner's optimal tree for the same points
 def tree_plot(solve_dir: str, path: str) -> None:
-    sys.path.insert(0, UPSTREAM)
-    from arora.quadtree import SteinerTree, Terminal  # noqa: E402
-    from arora.points import read_points  # noqa: E402
-
     conf = OmegaConf.load(os.path.join(solve_dir, ".hydra", "config.yaml"))
     point_file = os.path.join(WORK, conf["solve"]["testcase"])
     ours = SteinerTree.read(point_file, os.path.join(solve_dir, "solve", "final.txt"))
@@ -141,6 +211,10 @@ def main() -> None:
     os.makedirs(RESULTS, exist_ok=True)
     scaling_plot(os.path.join(RESULTS, "scaling.png"))
     print("wrote results/scaling.png")
+
+    if best_of_8_plot(os.path.join(RESULTS, "best_of_8.png")):
+        print("wrote results/best_of_8.png")
+
     if args.solve:
         tree_plot(args.solve, os.path.join(RESULTS, "tree.png"))
         print("wrote results/tree.png")

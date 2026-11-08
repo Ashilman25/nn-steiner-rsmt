@@ -9,7 +9,7 @@ The team's running record of the project: where things stand, what each of us ne
 - Background on the paper: [Project_Proposal.md](Project_Proposal.md)
 - Who owns what: [Team_Responsibilities.md](Team_Responsibilities.md)
 
-*Last updated: 2026-10-22*
+*Last updated: 2026-11-05*
 
 ---
 
@@ -33,6 +33,7 @@ The team's running record of the project: where things stand, what each of us ne
 - [Training on test-shaped examples (done)](#training-on-test-shaped-examples-done)
 - [How the paper trained its model](#how-the-paper-trained-its-model)
 - [The paper's full 120,000 examples (done)](#the-papers-full-120000-examples-done)
+- [Best of 8 and bigger problems (done)](#best-of-8-and-bigger-problems-done)
 - [What comes next](#what-comes-next)
 - [Our scripts, and what each one does](#our-scripts-and-what-each-one-does)
 - [How to reproduce our numbers](#how-to-reproduce-our-numbers)
@@ -55,8 +56,10 @@ The team's running record of the project: where things stand, what each of us ne
 | Is the shape of our training data the fix? | **It helps a little; it isn't the big fix.** Training on 12,000 examples shaped like the test problems gave 3.62% at the default threshold 0.95, because that network is rarely 95% sure. Its own threshold sweep picked 0.8: **3.28%**, a tie with the corner-shaped 3.38% on the 100 test problems (−0.10 ± 0.12), and a clearer gain on the 200-point set (−0.25 ± 0.09). That still left it 0.63 points behind the authors; the rest of the gap was the number of examples ([details](#training-on-test-shaped-examples-done)) |
 | How did the authors train their model? | **About 4,000× longer than our test-shaped model's best checkpoint** (and 36× longer than our 120,000 run): 120,000 examples, 5,000 epochs, batches of 5,000, one fixed tree shape, no early stopping mentioned. Everything else matches our setup, and their data was test-shaped too ([details](#how-the-paper-trained-its-model)) |
 | Does training much longer help? | **Not on 12,000 examples.** A paper-style run (one tree shape, batch 500, no early stopping) memorized them: by epoch 600 training F1 was 0.98 and validation F1 had fallen from 0.24 to 0.18. Its trees got worse too: **3.45%** at epoch 50 (its best), 3.68% at epoch 600 (+0.22 ± 0.11). Even the best is behind the test-shaped 3.28% ([details](#scoring-the-long-run-longer-training-on-12000-examples-doesnt-help-2026-10-19)). **On 120,000 examples it does:** the network no longer memorizes (training F1 only 0.76 after 140 epochs), and the trees improve from 3.62% at epoch 5 to 2.74% at epoch 40, then hold steady ([details](#the-papers-full-120000-examples-done)) |
-| What's running right now? | Nothing. The 120,000 run is finished and scored |
-| What's next? | Hand the 120,000 model over for evaluation (at threshold 0.9) on bigger problems and other point patterns. Then the report, and `portal_weight` if there's time. Details in [What comes next](#what-comes-next) |
+| Does NN-Steiner beat FLUTE on bigger problems? | **Yes, from 500 points on, as the paper says.** At 500 / 800 / 1,000 points, plain FLUTE (the paper's baseline) is 3.86% / 4.64% / 5.02% longer than optimal. One try of our model scores **3.03% / 3.39% / 3.49%** and the authors' 3.15% / 3.47% / 3.51% (their paper: 3.16% at 500, 3.52% at 1,000). FLUTE still wins at 100 and 200 points. Our model is slightly ahead of the authors' from 200 to 800 points and ties at 1,000 ([details](#best-of-8-and-bigger-problems-done)) |
+| Can we get better trees without retraining? | **Yes: solve each problem in its 8 orientations and keep the shortest ("best of 8").** On the 100-point exam, ours goes from 2.73% to **1.76%** and the authors' from 2.65% to **1.87%**. It helps at every size (ours: −0.97 points at 100, −0.38 at 1,000) and costs 8× the solve time. With it, NN-Steiner ties plain FLUTE at 200 points (2.30% vs 2.30%) ([details](#best-of-8-and-bigger-problems-done)) |
+| What's running right now? | Nothing. Best of 8 is finished and scored |
+| What's next? | Other point patterns and 2,000–5,000 points (against FLUTE, since there's no optimal there), then the report, and `portal_weight` if there's time. Details in [What comes next](#what-comes-next) |
 
 "% longer than optimal" is the real score: how much more wire our tree uses than the perfect tree from GeoSteiner. Lower is better. 3.38% means: where the perfect tree needs 100 m of wire, ours uses 103.38 m.
 
@@ -77,7 +80,8 @@ The team's running record of the project: where things stand, what each of us ne
   - `scripts/arora.sh pretrained_solve` should print `final_cost: 75641.0`.
   - The authors' model on `upstream/points/point100_10000x10000-uniform-100-pt/` should score **2.648%** against the authors' answer file, `third_party/NN-Steiner/exp_out/100_10000x10000-uniform-golden.txt`. 96 of the 100 lengths match the authors' own result file exactly.
 - **Our own trained model is ready, and it ties the authors'** (120,000 paper-style examples, 2.73% vs their 2.65%). I'll share the `.pt` file (about 830 MB), its exact settings and its training curves. **Run it with `nn_exp.threshold=0.9`:** that's the threshold picked for it on the 200-point set (0.95 was a little worse there). Test the authors' model alongside it.
-- **So far I've only tested 100-point uniform problems.** The paper's main claim is that NN-Steiner beats FLUTE at 500+ points. We haven't tested that yet; it's part of your evaluation.
+- **Uniform 100–1,000 points are now done for both models, with and without best of 8** ([details](#best-of-8-and-bigger-problems-done)). Still open for your evaluation: the other point patterns and 2,000–5,000 points. `scripts/best_of_8.py` handles the uniform sets; ask me if you want it for the others.
+- **Two FLUTE files, two different baselines.** `flute_out/flute<n>_...-uniform.txt` is plain FLUTE, the numbers in the paper's table (1.25% at 100 points). `exp_out/<n>_...-uniform-flute-refined.txt` is FLUTE plus a refinement step, a stronger baseline (1.16% at 100). Say which one you compare against.
 
 ---
 
@@ -115,6 +119,8 @@ The team's running record of the project: where things stand, what each of us ne
 
 **Oct 18–19: the long paper-style run.** Trained on the 12,000 paper-style examples at batch 500 with no early stopping. By epoch 609 it was memorizing (training F1 0.98, validation F1 down from 0.24 at epoch 120 to 0.18), so I stopped it at epoch 611. Wrote `scripts/score_checkpoint.sh` and scored 5 of its checkpoints: the trees got a little worse as it memorized (3.45% at epoch 50, 3.68% at epoch 600), and all are behind the test-shaped 3.28%. Training longer on 12,000 examples doesn't help; next is the paper's full 120,000.
 
+**Nov 3–5: best of 8 and bigger problems.** Wrote `scripts/best_of_8.py`: it solves each test problem in its 8 orientations (4 rotations, each mirrored or not) and keeps the shortest tree. A GeoSteiner check proved the turning is right (all 1,600 turned copies of the 100- and 200-point sets keep exactly their optimal length). Scored both models at 100, 200, 500, 800 and 1,000 points. Best of 8 helps both at every size (ours: 2.73% → 1.76% on the exam), and from 500 points on NN-Steiner beats FLUTE, as the paper says.
+
 **Oct 19–20: the paper's full 120,000 examples.** Made 120,000 paper-style examples (9.6 GB) and trained them for 140 epochs at batch 500. It ran in three parts: I paused it twice (at epochs 42 and 123) and restarted from the last numbered checkpoint with `train.checkpoint`. About 22.5 h in all. Validation F1 rose to 0.43 with no memorizing. Scored 6 checkpoints with `scripts/score_checkpoint.sh`. The one picked on the 200-point set (epoch 140, threshold 0.9) scores **2.73%**, a tie with the authors' 2.65% (+0.08 ± 0.09). The number of examples was the gap.
 
 ---
@@ -125,7 +131,8 @@ All scores are on the same exam: the authors' 100 test problems (100 uniformly r
 
 | Method | Training examples | Cleanup off | **Cleanup on** (the paper's method) |
 |---|---|---|---|
-| FLUTE (fast standard method, authors' result file) | – | – | 1.25% |
+| FLUTE (fast standard method, authors' result file; the paper's baseline) | – | – | 1.25% |
+| FLUTE plus a refinement step (authors' `flute-refined` file, a stronger baseline) | – | – | 1.16% |
 | Authors' model, their published result file | 120,000 | 6.87% | 2.65% (2.646) |
 | Authors' model, run by me | 120,000 | 6.87% | **2.65%** (2.648) |
 | My 30-epoch model (old leaky validation) | 1,200 | 10.63% | 3.74% |
@@ -135,13 +142,27 @@ All scores are on the same exam: the authors' 100 test problems (100 uniformly r
 | **Test-shaped training** (threshold 0.8, picked on the 200-point set) | 12,000 | – | **3.28%** (3.62% at 0.95) |
 | **Paper-style training, much longer** (one tree shape, batch 500; best checkpoint, epoch 50, threshold 0.8) | 12,000 | – | **3.45%** (3.68% after 600 epochs) |
 | **Paper-style training, the paper's full 120,000 examples** (140 epochs, batch 500; epoch 140 and threshold 0.9, both picked on the 200-point set) | 120,000 | – | **2.73%** (2.74% already at epoch 40) |
+| **Best of 8**, authors' model (threshold 0.95) | 120,000 | – | **1.87%** |
+| **Best of 8**, our 120,000 model (threshold 0.9) | 120,000 | – | **1.76%** |
 | No network (threshold 1.0), authors' model | – | – | 3.72% |
 | No network (threshold 1.0), our 36,000 model | – | – | 3.77% |
 | No network (threshold 1.0), our test-shaped model | – | – | 3.78% |
 
 The two "no network" rows use threshold 1.0, so almost no portal passes and the tree comes mostly from the cleanup step. They show how much each network adds ([details](#the-threshold-experiment-done)).
 
-FLUTE beating NN-Steiner here is expected. The paper's claim is that NN-Steiner wins on **bigger** problems (500+ points), which we haven't tested yet.
+FLUTE beating NN-Steiner here is expected. The paper's claim is that NN-Steiner wins on **bigger** problems (500+ points), and it does:
+
+**By problem size** (100 uniform problems per size; % longer than optimal; "best of 8" = the shortest of the problem's 8 orientations):
+
+| Points | FLUTE | FLUTE refined | Authors', one try | Ours, one try | Authors', best of 8 | Ours, best of 8 | Paper's NN-Steiner |
+|---|---|---|---|---|---|---|---|
+| 100 | **1.25** | **1.16** | 2.65 | 2.73 | 1.87 | 1.76 | 2.65 |
+| 200 | 2.30 | **2.15** | 3.06 | 2.95 | 2.41 | 2.30 | 3.06 |
+| 500 | 3.86 | 3.63 | 3.15 | 3.03 | 2.66 | **2.52** | 3.16 |
+| 800 | 4.64 | 4.35 | 3.47 | 3.39 | 3.05 | **2.96** | – |
+| 1,000 | 5.02 | 4.73 | 3.51 | 3.49 | 3.19 | **3.11** | 3.52 |
+
+"One try" is the problem as given (turn 0), the usual way to run NN-Steiner. Our model uses threshold 0.9, the authors' 0.95.
 
 **The scaling study in detail:**
 
@@ -178,9 +199,14 @@ FLUTE beating NN-Steiner here is expected. The paper's claim is that NN-Steiner 
 
 10. **With the paper's full 120,000 examples, our own model matches the authors'.** Same paper-style setup as point 9, with 10× the examples, for 140 epochs: 33,600 learning steps of 500, about 16.8 million examples processed, 36× less than the paper. It scores **2.73%** vs the authors' 2.65%: +0.08 ± 0.09 points, and each model wins about half the problems (52 vs 48). That's 0.55 ± 0.11 better than our previous best (3.28%), well past the 0.3 points set in advance, so **the number of examples was the gap**. The extra examples don't make early learning faster: at the same 1,200 steps, 120,000 examples score no better than 12,000 (3.62% vs 3.45%, +0.17 ± 0.10). What they do is stop the memorizing, so the network can keep learning. Training F1 only reached 0.76 (vs 0.98 on 12,000), and the trees went from 3.62% at epoch 5 to 2.74% at epoch 40, then held steady to epoch 140. Our network now adds about 93% of what the authors' adds over no network (0.99 vs 1.07 points) ([details](#the-papers-full-120000-examples-done)).
 
-11. **What these results don't cover yet:**
-   - Bigger problems (500–5,000 points), where the paper's main claim lives.
+11. **Solving each problem in its 8 orientations and keeping the shortest tree is a big, free improvement.** Turning or mirroring a problem doesn't change its optimal length, but NN-Steiner's answer changes a lot: on 0 of 100 problems do all 8 orientations give the same length, at any size, for either model. On the 100-point exam a problem's best and worst orientations differ by about 2% of optimal on average, about 20× the gap between our model and the authors'. Keeping the shortest of 8 takes ours from 2.73% to **1.76%** (−0.97 ± 0.07 points, shorter on 91 of 100) and the authors' from 2.65% to **1.87%** (−0.78 ± 0.06). It helps at every size, less as problems grow (ours: −0.65 at 200, −0.51 at 500, −0.43 at 800, −0.38 at 1,000), and it hasn't levelled off at 8 tries. The cost is 8× the solve time (about 13 minutes instead of 100 s for the 100-point exam). It also shows the single-orientation scores carry luck: averaged over the 8 orientations, the authors' model scores 2.75% (its 2.65% was a good orientation) and ours 2.68% ([details](#best-of-8-and-bigger-problems-done)).
+
+12. **On bigger problems the paper's claim holds, and our model holds up.** The authors' model scored by us matches their paper at 200, 500 and 1,000 points too (3.06 / 3.15 / 3.51% vs 3.06 / 3.16 / 3.52%). From 500 points on, both models beat FLUTE on almost every problem, by more as problems grow (ours, one try, vs plain FLUTE: −0.83 points at 500, −1.53 at 1,000). Our model is slightly ahead of the authors' from 200 to 800 points (averaged over the 8 orientations: −0.09 ± 0.03, −0.14 ± 0.02, −0.08 ± 0.02 points) and ties at 1,000 (−0.03 ± 0.02). At 100 and 200 points FLUTE still wins, though best of 8 ties plain FLUTE at 200.
+
+13. **What these results don't cover yet:**
+   - 2,000–5,000 points. There's no optimal answer there, so the comparison is against FLUTE directly.
    - Other point patterns (normal, mix-normal, non-isotropic).
+   - How much of the orientation effect (point 11) comes from the network and how much from the cleanup steps.
    - Runtime. Ours isn't comparable to the paper's anyway: different hardware, and GeoSteiner without CPLEX.
    - Run-to-run luck. Every result is one training run with one seed (42).
 
@@ -785,10 +811,84 @@ All validation F1s are on the same test-shaped validation set (seed 7200).
 
 ---
 
+## Best of 8 and bigger problems (done)
+
+### Best of 8: the shortest of 8 orientations beats one try at every size (2026-11-03 to 11-05)
+
+**The idea.** Turn a problem like a photo: 0°, 90°, 180° or 270°, each mirrored or not. That's 8 versions of the same puzzle with exactly the same optimal length, because horizontal and vertical wires stay horizontal and vertical. Solve all 8, measure each tree and keep the shortest. That only uses the trees' lengths, never the optimal answer. In ML terms it's test-time augmentation (best of N). POMO (Kwon et al., NeurIPS 2020) does the same with 8 symmetries for routing problems. Arora's original algorithm uses random shifts of its grid for a similar reason.
+
+**How.** `scripts/best_of_8.py` writes the 8 turned copies of a test set (`work/points/turned/<set>/turn0` … `turn7`), solves each with `flow=[nn_exp]` at the model's own threshold, and combines them per problem. Mirroring uses `9999 − x`, not `10000 − x`: test points are whole numbers 0–9999, and a quadtree cell holds `min <= x < max`, so `10000 − 0` would land outside every cell.
+
+**Checks.**
+- GeoSteiner on every turned copy of the 100- and 200-point sets gives exactly the optimal length (1,600 of 1,600). That proves the turning before any network is involved.
+- Turn 0 solved again is byte-identical to the earlier single-try file (2.73%), so solving is repeatable.
+- Which orientation wins is spread evenly: turn 0 wins 4–19 of 100 problems across sizes and models, around the 12.5 you'd expect by chance. So there's no favourite orientation and no sign of a turning bug.
+
+**Results, % longer than optimal** (best of k = the shortest of the first k orientations: 1 = as given, 2 = + 90°, 4 = all rotations, 8 = all):
+
+| Points | Model | Best of 1 | 2 | 4 | 8 | Best of 8 vs one try | Shorter on |
+|---|---|---|---|---|---|---|---|
+| 100 | Ours | 2.73 | 2.33 | 2.01 | **1.76** | −0.97 ± 0.07 | 91 of 100 |
+| 100 | Authors' | 2.65 | 2.32 | 2.10 | **1.87** | −0.78 ± 0.06 | 88 |
+| 200 | Ours | 2.95 | 2.68 | 2.46 | **2.30** | −0.65 ± 0.05 | 83 |
+| 200 | Authors' | 3.06 | 2.81 | 2.60 | **2.41** | −0.65 ± 0.05 | 85 |
+| 500 | Ours | 3.03 | 2.83 | 2.67 | **2.52** | −0.51 ± 0.04 | 96 |
+| 500 | Authors' | 3.15 | 2.94 | 2.81 | **2.66** | −0.49 ± 0.03 | 91 |
+| 800 | Ours | 3.39 | 3.24 | 3.10 | **2.96** | −0.43 ± 0.03 | 89 |
+| 800 | Authors' | 3.47 | 3.29 | 3.15 | **3.05** | −0.42 ± 0.03 | 89 |
+| 1,000 | Ours | 3.49 | 3.34 | 3.23 | **3.11** | −0.38 ± 0.03 | 81 |
+| 1,000 | Authors' | 3.51 | 3.38 | 3.27 | **3.19** | −0.32 ± 0.03 | 83 |
+
+On the remaining problems best of 8 ties one try (the original orientation was already the best). It can never be worse, because one try is one of the 8.
+
+**How much the orientation matters** (spread = a problem's longest minus shortest of the 8, as % of optimal, averaged over the 100 problems):
+
+| Points | 100 | 200 | 500 | 800 | 1,000 |
+|---|---|---|---|---|---|
+| Ours | 1.95 | 1.52 | 0.96 | 0.85 | 0.80 |
+| Authors' | 1.90 | 1.47 | 0.93 | 0.79 | 0.68 |
+| Problems where all 8 give the same length | 0 | 0 | 0 | 0 | 0 |
+
+**Ours vs the authors', problem by problem** (negative = ours shorter; in brackets, on how many of 100 problems ours is shorter):
+
+| Points | One try | Average of the 8 orientations | Best of 8 |
+|---|---|---|---|
+| 100 | +0.08 ± 0.09 (52) | −0.06 ± 0.04 (58) | −0.11 ± 0.05 (58) |
+| 200 | −0.12 ± 0.08 (59) | −0.09 ± 0.03 (62) | −0.12 ± 0.04 (59) |
+| 500 | −0.13 ± 0.05 (65) | −0.14 ± 0.02 (74) | −0.14 ± 0.03 (70) |
+| 800 | −0.08 ± 0.05 (50) | −0.08 ± 0.02 (63) | −0.09 ± 0.03 (63) |
+| 1,000 | −0.02 ± 0.04 (54) | −0.03 ± 0.02 (54) | −0.09 ± 0.02 (64) |
+
+Averaging over the 8 orientations removes most of the orientation luck, so its ± is 2–4× smaller than one try's. That's the fairer way to compare two models.
+
+**vs FLUTE** (refined FLUTE, the stronger of the authors' two FLUTE files; negative = NN-Steiner shorter; in brackets, on how many of 100 problems NN-Steiner is shorter):
+
+| Points | Ours, one try | Ours, best of 8 | Authors', one try | Authors', best of 8 |
+|---|---|---|---|---|
+| 100 | +1.57 ± 0.11 (8) | +0.60 ± 0.08 (21) | +1.48 ± 0.09 (3) | +0.71 ± 0.08 (16) |
+| 200 | +0.80 ± 0.09 (21) | +0.14 ± 0.07 (41) | +0.91 ± 0.09 (14) | +0.26 ± 0.07 (38) |
+| 500 | −0.60 ± 0.05 (86) | −1.11 ± 0.05 (98) | −0.47 ± 0.06 (79) | −0.97 ± 0.05 (98) |
+| 800 | −0.97 ± 0.05 (99) | −1.39 ± 0.04 (100) | −0.88 ± 0.05 (95) | −1.31 ± 0.04 (100) |
+| 1,000 | −1.24 ± 0.04 (100) | −1.63 ± 0.04 (100) | −1.22 ± 0.05 (99) | −1.54 ± 0.04 (100) |
+
+**One catch above 200 points.** Deep quadtree cells have edges at .5 (312.5, 156.25, …), and `9999 − x` doesn't mirror those exactly: x = 312 sits left of the line at 312.5, and 9999 − 312 = 9687 also sits left of the mirrored line at 9687.5. So some turned copies get a slightly different quadtree. Measured with the authors' `QuadTree` on every copy: none at 100 or 200 points; at 500 / 800 / 1,000 points, 64 / 318 / 432 of the 700 turned copies, and all 8 copies are exact mirror images on only 84 / 30 / 12 problems. Best of 8 is still fair (every tree is valid for the original points). The spread is about the same on the all-exact problems alone (ours 0.96 / 0.81 / 0.77 vs 0.96 / 0.85 / 0.80 overall), so the quadtree differences don't drive the orientation effect.
+
+**Cost.** One try of the 100-point exam takes about 100 s on my Mac (200 points: about 185 s), so best of 8 takes 8× that: about 13 and 25 minutes. The turned copies don't depend on each other, so they can run side by side (`--jobs 4` did 500–1,000 points in about 1 h 40 min per model).
+
+**Why it matters.**
+- A large improvement with no training: about 1 point on the exam for both models.
+- NN-Steiner is far from orientation-blind, even though turning a problem changes nothing about its answer. That's the motivation for training on turned copies (symmetry augmentation), which would test whether a network can learn not to care.
+- One-try comparisons between models carry orientation luck. The authors' 2.65% was a good orientation; averaged over all 8 it's 2.75%, and ours 2.68%.
+- Open: how much of the orientation effect comes from the network and how much from the cleanup steps (`refine_leaves`, `post_process`). Solving the 8 orientations with the correct doors given would separate the two.
+
+![Best of 8 by problem size, and score vs number of tries](../results/best_of_8.png)
+
+---
+
 ## What comes next
 
 **Now that Experiments 1–5 are done** (data scaling, threshold, data shape, long training, and the paper's full 120,000 examples), in this order:
-1. **Hand the 120,000 model over for evaluation** as `m15_kb4_n120000.pt` (part 3's `nnArora_ep20.pt`, epoch 140), with its settings, its training curves (three run folders; I'll stitch them into one) and **threshold 0.9**. It ties the authors' model on 100-point problems, so it's the one to test on bigger problems (500–5,000 points) and other point patterns.
+1. **Hand the 120,000 model over for evaluation** as `m15_kb4_n120000.pt` (part 3's `nnArora_ep20.pt`, epoch 140), with its settings, its training curves (three run folders; I'll stitch them into one) and **threshold 0.9**. Uniform 100–1,000 points are done ([best of 8 and bigger problems](#best-of-8-and-bigger-problems-done)); still open are other point patterns and 2,000–5,000 points.
 2. **Writing:** the scaling plot (training examples on a log scale vs % longer than optimal, with dashed lines at the authors' 2.65% and the "no network" 3.77%), now with the 120,000 point, and its report paragraph. Plus my one-page architecture summary with a diagram.
 3. **Experiment 6, if there's time: `portal_weight`.** One run of the 120,000 recipe with `train.portal_weight=0` (no extra weight for "used" portals), about 20 h, scored the same way. Only the loss changes. It shows whether the paper's weighting for the class imbalance (3.1% of portals used) matters.
 
@@ -814,6 +914,8 @@ All validation F1s are on the same test-shaped validation set (seed 7200).
 | Make data, train, solve or score anything | `scripts/arora.sh <config> [settings...]` |
 | Grade models' portal guesses (F1, precision, recall) without solving | `python scripts/val_f1.py <model.pt> [more models...]` |
 | Score a trained model on the 100 test problems, threshold picked on the 200-point set | `scripts/score_checkpoint.sh <model.pt> <name> [thresholds...]` |
+| Solve each test problem in its 8 orientations and keep the shortest (best of 8) | `python scripts/best_of_8.py solve <model.pt> <name> <threshold> --sizes 100 200` |
+| Run the unit tests | `python -m unittest discover -s tests` |
 | Do all of this on Colab | `notebooks/colab.ipynb` |
 
 All of them run from the repo root, with the virtual environment active on a Mac (`source .venv/bin/activate`).
@@ -941,6 +1043,19 @@ scripts/score_checkpoint.sh outputs/2026-10-18/23-16-42/train/model/nnArora_ep20
 - Results go to `work/exp_out/thr200-<name>-t<t>-solved.txt` and `thr-<name>-t<t>-solved.txt`, with each solve's log next to them (`.log`). Finished files are reused, so an interrupted run can just be started again.
 - If the pick is the lowest or highest threshold tried, it prints a note: the best may lie beyond the list, so try more (pass them as extra arguments).
 - Check: `scripts/score_checkpoint.sh outputs/2026-10-18/01-58-52/train/model/nnArora.pt shape12000 0.7 0.75 0.8 0.85` reuses the test-shaped model's sweep and prints `picked threshold 0.8` and `3.282%`.
+
+### `scripts/best_of_8.py`: best of 8 (about 13 min per model for the 100-point exam)
+
+```bash
+python scripts/best_of_8.py check --sizes 100 200 --jobs 4                            # proves the turning, no network
+python scripts/best_of_8.py solve models/m15_kb4_n120000.pt p120k 0.9 --sizes 100 200
+```
+
+- `solve` writes the 8 turned copies of each uniform test set (`work/points/turned/<set>/turn0` … `turn7`, same file names), solves each with `flow=[nn_exp]` at the given threshold, and prints each orientation's score, best of 1 / 2 / 4 / 8 vs one try (with ± and wins), which orientation wins, the spread, how many copies are exact mirror images, and the solve time.
+- Results go to `work/exp_out/best8-<name>-thr<threshold>-<n>pt-*`: one solved file and log per orientation, the combined `-best2/4/8-solved.txt` (gradable with `evaluateRatio.py`) and a per-problem `.csv`.
+- Finished solves are reused, so a stopped run (Ctrl-C) can just be started again. Use a new `<name>` per model. `--jobs 4` solves 4 copies at once; the solve times are then not comparable.
+- `check` solves every turned copy exactly with GeoSteiner and compares with the optimal file. It should end with `check passed`.
+- The 8 turns live in `lib/turns.py`; unit tests in `tests/` (`python -m unittest discover -s tests`, 20 tests, about 1 s).
 
 ### `notebooks/colab.ipynb`: the same, on Colab
 
@@ -1128,6 +1243,48 @@ done
 ```
 The authors' spot-check is the 100-point loop with `M=models/pretrained/m15_kb4.pt`, thresholds `0.6 1.0`, and output `exp_out/thr-pretrained-t$t`. Their own threshold files are `$E/100_10000x10000-uniform-m=15_kb=4-threshold=<t>-solved.txt` (and `200_...` for the 200-point set).
 
+**Best of 8 and bigger problems** (about 13 / 25 min per model for the 100 / 200-point sets one at a time; about 1 h 40 min per model for 500–1,000 points with `--jobs 4`). The 100-point runs print `best of 8: 1.76%` (ours) and `1.87%` (authors'):
+```bash
+python scripts/best_of_8.py check --sizes 100 200 --jobs 4
+python scripts/best_of_8.py solve models/m15_kb4_n120000.pt p120k 0.9 --sizes 100 200
+python scripts/best_of_8.py solve models/pretrained/m15_kb4.pt pretrained 0.95 --sizes 100 200
+python scripts/best_of_8.py solve models/m15_kb4_n120000.pt p120k 0.9 --sizes 500 800 1000 --jobs 4
+python scripts/best_of_8.py solve models/pretrained/m15_kb4.pt pretrained 0.95 --sizes 500 800 1000 --jobs 4
+python scripts/make_figures.py            # also draws results/best_of_8.png once all of the above exist
+```
+
+**Compare both models with each other and with FLUTE, at every size** (one try, average of the 8 orientations, best of 8):
+```bash
+python - <<'PY'
+import numpy as np, os
+E, U = "work/exp_out", "third_party/NN-Steiner/exp_out"
+
+# a vs b problem by problem, in % over optimal
+def pair(label, a, b):
+    d = (a - b) * 100
+    print(f"{label}: {a.mean() * 100:.2f}% vs {b.mean() * 100:.2f}%, difference {d.mean():+.2f} +- "
+          f"{d.std(ddof=1) / np.sqrt(len(d)):.2f} points, first shorter on {(d < 0).sum()}, second on {(d > 0).sum()}")
+
+for n in [100, 200, 500, 800, 1000]:
+    g = np.loadtxt(f"{U}/{n}_10000x10000-uniform-golden.txt")
+    flute = np.loadtxt(f"{U}/{n}_10000x10000-uniform-flute-refined.txt") / g - 1
+    print(f"== {n} points (FLUTE {flute.mean() * 100:.2f}%)")
+    runs = {}
+    for name, thr in [("ours", "p120k-thr0.9"), ("authors'", "pretrained-thr0.95")]:
+        files = [f"{E}/best8-{thr}-{n}pt-turn{k}-solved.txt" for k in range(8)]
+        if all(os.path.exists(f) for f in files):
+            t = np.array([np.loadtxt(f) for f in files]) / g - 1          # [turn][problem]
+            runs[name] = {"turn 0": t[0], "average of the 8 turns": t.mean(0), "best of 8": t.min(0)}
+    for name, r in runs.items():
+        for key in ["turn 0", "best of 8"]:
+            pair(f"{name} {key} vs FLUTE", r[key], flute)
+    if len(runs) == 2:
+        for key in ["turn 0", "average of the 8 turns", "best of 8"]:
+            pair(f"ours vs authors', {key}", runs["ours"][key], runs["authors'"][key])
+PY
+```
+Plain FLUTE (the paper's baseline) is `third_party/NN-Steiner/flute_out/flute<n>_10000x10000-uniform.txt`.
+
 ---
 
 ## Where everything is
@@ -1200,12 +1357,15 @@ Inside a training run: `train/` holds the TensorBoard curves, and `train/model/n
 
 ## Open questions
 
-- **Does NN-Steiner beat FLUTE on bigger problems (500+ points) in our setup,** as the paper claims? And does our 120,000 model hold up there and on other point patterns, like the authors' does? (evaluation, with the 120,000 model)
+- **Does our 120,000 model hold up on other point patterns and at 2,000–5,000 points?** (evaluation, with the 120,000 model)
+- **How much of the orientation effect comes from the network, and how much from the cleanup steps?** Solving the 8 orientations with the correct doors given would separate the two. (cheap, no training)
+- **Does training on turned copies make the network care less about orientation,** and does it replace new examples? (symmetry augmentation, 1–2 overnight runs)
 - **Is our 2.73% repeatable?** It's one training run with one seed. A second seed would show how much run-to-run luck there is (about 20 h). (if there's time)
 - **Which more experiment do we commit to?** Five are done (data scaling, threshold, data shape, long training, the paper's full 120,000 examples). I propose `portal_weight` if there's time; see [What comes next](#what-comes-next). (the team decides)
 - **Does loading the latest checkpoint instead of the best one** change the authors' reported test numbers?
 
 **Answered:**
+- *Does NN-Steiner beat FLUTE on bigger problems in our setup?* Yes, from 500 points on, for both models, and our 120,000 model holds up there (slightly ahead of the authors' from 200 to 800 points, a tie at 1,000) ([details](#best-of-8-and-bigger-problems-done)).
 - *Do 10× more examples close the gap?* Yes, for paper-style data: 120,000 examples score 2.73%, a tie with the authors' 2.65% (+0.08 ± 0.09) ([details](#the-papers-full-120000-examples-done)).
 - *Do we reproduce the authors' pretrained results across all 100 test cases?* Yes, once the cleanup step is restored: 2.648% vs 2.646% ([details](#the-authors-model-matches-the-paper-once-a-switched-off-cleanup-step-is-restored-2026-09-29)).
 - *Where does validation F1 level off?* On 1,200 examples, around epoch 16–20 (about 0.22 on the clean validation set). The old run's "still rising" 0.304 was on the leaky set. Bigger datasets level off later and higher.
