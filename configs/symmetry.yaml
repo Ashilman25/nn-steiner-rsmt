@@ -1,0 +1,30 @@
+# The paper.yaml style setup, trained on all 8 turned copies of the 12,000 problems
+
+
+defaults:
+  - config
+  - _self_
+
+flow:
+  - train
+
+data_gen:
+  x_range: 10000
+  y_range: 10000
+  constraint: level
+  level: 3
+  turns: 8               
+
+train:
+  train_set: data/level3_10000x10000-uniform-96000-turns8-tensor
+  val_set: data/batch4_10000x10000-uniform-128-tensor
+  test_set: data/batch2_10000x10000-uniform-64-tensor
+  batch_size: 500
+  val_batch_size: 32
+  test_batch_size: 32
+  eval: 5                 # 192 steps per epoch, so validate every 5 like the 120k run
+  max_no_update: 100000   # never stop early
+  keep_every: 0           
+
+nn_exp:
+  test_set: upstream/points/point100_10000x10000-uniform-100-pt/

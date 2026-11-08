@@ -1,0 +1,139 @@
+diff --git a/arora/flow/dataGen.py b/arora/flow/dataGen.py
+--- a/arora/flow/dataGen.py
++++ b/arora/flow/dataGen.py
+@@ -124,6 +124,31 @@
+     assert len(point_set) == len(points)
+ 
+ 
++# Base problem and turn (0-7) of sample idx; turns > 1 needs lib/turns.py
++def split_idx(idx: int, data_args: Dict) -> Tuple[int, int]:
++    num_turns: int = data_args["turns"]
++    if num_turns == 1:
++        return (idx, 0)
++    from turns import sample_turn
++
++    return sample_turn(idx, data_args["batch"] // num_turns, num_turns)
++
++
++# Turned copies only work on a square box whose shared tree mirrors onto itself
++def check_turns(data_args: Dict) -> None:
++    num_turns: int = data_args["turns"]
++    assert 1 <= num_turns <= 8, f"turns must be 1-8: {num_turns}"
++    if num_turns == 1:
++        return
++    assert data_args["batch"] % num_turns == 0, "batch must be a multiple of turns"
++    assert data_args["x_range"] == data_args["y_range"], "turns needs a square box"
++    assert data_args["constraint"] in ("level", None), "turns needs level or no constraint"
++    if data_args["constraint"] == "level":
++        assert data_args["x_range"] % 2 ** data_args["level"] == 0, (
++            "turns needs whole-number cell edges"
++        )
++
++
+ def worker(
+     idx: int,
+     data_args: Dict,
+@@ -133,7 +158,9 @@
+     attempt: int = 0,
+ ) -> Tuple[int, int]:
+     # point generation (a retry after a stall gets a fresh point set)
+-    seed: int = idx + data_args["seed"] + attempt * RETRY_SEED_OFFSET
++    # all turned copies of a base problem share its seed
++    (base, turn) = split_idx(idx, data_args)
++    seed: int = base + data_args["seed"] + attempt * RETRY_SEED_OFFSET
+     point_gen: PointGen = get_pointGen(data_args["dist"], data_args, seed)
+     points: List[Tuple[int, int]] = point_gen.get_points(data_args["num_points"])
+ 
+@@ -142,7 +169,13 @@
+         points: List[Tuple[int, int]] = get_struct_quadtree(
+             points, simplify_quadtree(tree), quadtree_args["kb"]
+         )
++
++    # turn after fitting the tree, so GeoSteiner labels the turned points
++    if turn > 0:
++        from turns import turn_points
+ 
++        points = turn_points(turn, points, data_args["x_range"] - 1)
++
+     check_no_overlap(points)
+     name: str = make_name(data_args)
+     file_name: str = os.path.join(output_dir, f"{name}-{idx}")
+@@ -234,7 +267,8 @@
+     ]
+ 
+     # leaving the pool terminates any worker still stuck in GeoSteiner
+-    points_num: List[int] = []
++    # a stuck base problem is redone in all its turns, so they stay copies
++    points_num: Dict[int, int] = {}
+     todo: List[Tuple] = worker_list
+     for attempt in range(MAX_ATTEMPTS):
+         done: Set[int] = set()
+@@ -246,16 +280,18 @@
+                 for _ in tqdm(range(len(todo))):
+                     (idx, num) = results.next(timeout=STALL_SECONDS)
+                     done.add(idx)
+-                    points_num.append(num)
++                    points_num[idx] = num
+             except mp.TimeoutError:
+                 pass
+-        todo = [task for task in todo if task[0] not in done]
++        stalled: List[int] = [task[0] for task in todo if task[0] not in done]
++        stuck_bases: Set[int] = {split_idx(idx, data_args)[0] for idx in stalled}
++        todo = [task for task in worker_list if split_idx(task[0], data_args)[0] in stuck_bases]
+         if len(todo) == 0:
+             break
+-        logger.warning(
+-            f"GeoSteiner stalled on samples {[task[0] for task in todo]}, "
+-            "redoing them with new points"
+-        )
++        msg: str = f"GeoSteiner stalled on samples {stalled}, redoing them with new points"
++        if data_args["turns"] > 1:
++            msg += f" (all turns of base problems {sorted(stuck_bases)})"
++        logger.warning(msg)
+     assert len(todo) == 0, f"still stalled: {[task[0] for task in todo]}"
+ 
+     # debug
+@@ -273,8 +309,8 @@
+     #             dumped_ref["tree_struct"],
+     #         ]
+ 
+-    mean: float = statistics.mean(points_num)
+-    stdev: float = statistics.stdev(points_num)
++    mean: float = statistics.mean(points_num.values())
++    stdev: float = statistics.stdev(points_num.values())
+ 
+     logger.info(f"points summary: mean: {mean}, stdev: {stdev}")
+ 
+@@ -286,15 +322,19 @@
+     data_args: Dict = args["data_gen"]
+     quadtree_args: Dict = args["quadtree"]
+ 
++    check_turns(data_args)
++
+     # get output name
+     dir_name: str = make_name(data_args)
+ 
+-    # make dir
++    # make dir (turned sets get "-turns<N>" so they can't overwrite plain ones)
+     output: str = data_args["output"]
+     batch: str = data_args["batch"]
++    turns_tag: str = f"-turns{data_args['turns']}" if data_args["turns"] > 1 else ""
+     dir_type: str = get_dir_type(output)
+     output_dir: str = os.path.join(
+-        hydra.utils.get_original_cwd(), f"{dir_type}/{dir_name}-{batch}-{output}"
++        hydra.utils.get_original_cwd(),
++        f"{dir_type}/{dir_name}-{batch}{turns_tag}-{output}",
+     )
+     # make directory
+     if not os.path.exists(output_dir):
+diff --git a/conf/config.yaml b/conf/config.yaml
+--- a/conf/config.yaml
++++ b/conf/config.yaml
+@@ -45,6 +45,7 @@
+   level: -1
+   num_trees: 24
+   dist: uniform
++  turns: 1
+   output: tensor
+   type: mlp
+   precision: 32
