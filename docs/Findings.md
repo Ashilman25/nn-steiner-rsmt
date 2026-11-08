@@ -9,7 +9,7 @@ The team's running record of the project: where things stand, what each of us ne
 - Background on the paper: [Project_Proposal.md](Project_Proposal.md)
 - Who owns what: [Team_Responsibilities.md](Team_Responsibilities.md)
 
-*Last updated: 2026-11-07*
+*Last updated: 2026-11-08*
 
 ---
 
@@ -34,6 +34,7 @@ The team's running record of the project: where things stand, what each of us ne
 - [How the paper trained its model](#how-the-paper-trained-its-model)
 - [The paper's full 120,000 examples (done)](#the-papers-full-120000-examples-done)
 - [Best of 8 and bigger problems (done)](#best-of-8-and-bigger-problems-done)
+- [Training on turned copies (done)](#training-on-turned-copies-done)
 - [What comes next](#what-comes-next)
 - [Our scripts, and what each one does](#our-scripts-and-what-each-one-does)
 - [How to reproduce our numbers](#how-to-reproduce-our-numbers)
@@ -49,7 +50,7 @@ The team's running record of the project: where things stand, what each of us ne
 |---|---|
 | Can everyone run the authors' code? | **Yes.** It takes one setup command on a Mac or on Colab. Their training needed 2+ NVIDIA GPUs; it now runs on 1 GPU, an Apple GPU, or CPU |
 | Is the authors' trained model as good as the paper says? | **Yes.** On the 100 uniform 100-point test problems it scores **2.648%** longer than optimal, vs their published **2.646%**. Getting there needed a fix (patch 0004) |
-| Can we train a model that good ourselves? | **Yes.** Trained on the paper's full 120,000 paper-style examples (one fixed tree shape, batch 500, 140 epochs), our model scores **2.73%** vs the authors' **2.65%**: +0.08 ± 0.09 points, and ours is shorter on 52 of the 100 problems. That's a tie. Earlier runs: 1,200 examples **3.77%**, 12,000 **3.38%**, 36,000 **3.38%**, 12,000 test-shaped **3.28%**, 12,000 paper-style trained much longer **3.45%** ([details](#the-papers-full-120000-examples-done)) |
+| Can we train a model that good ourselves? | **Yes.** Trained on the paper's full 120,000 paper-style examples (one fixed tree shape, batch 500, 140 epochs), our model scores **2.73%** vs the authors' **2.65%**: +0.08 ± 0.09 points, and ours is shorter on 52 of the 100 problems. That's a tie. Earlier runs: 1,200 examples **3.77%**, 12,000 **3.38%**, 36,000 **3.38%**, 12,000 test-shaped **3.28%**, 12,000 paper-style trained much longer **3.45%** ([details](#the-papers-full-120000-examples-done)). Later: the same 12,000 problems each turned 8 ways, **2.75%** ([details](#training-on-turned-copies-done)) |
 | Is more training data the fix? | **For paper-style data, yes.** 120,000 examples gave 2.73%: 0.55 ± 0.11 points better than our previous best (3.28%), and 0.72 ± 0.09 better than the same setup on 12,000 (3.45%). For corner-shaped data it wasn't: 12,000 → 36,000 changed nothing (each model wins 50 of 100 problems) |
 | Is the portal threshold the problem? | **No, but each model needs its own.** For our corner-shaped model the default 0.95 was already best, on both the 100- and 200-point sets. Models trained differently are sure of themselves in different ways: the test-shaped model's best is 0.8, the 120,000 model's 0.9, both picked on the 200-point set. The sweep also showed **where** the gap was: over a "no network" baseline (threshold 1.0, 3.77%), the corner-shaped network improved the score by only 0.39 points, the authors' by 1.07. The 120,000 model's network adds 0.99 ([details](#the-threshold-experiment-done)) |
 | Does the authors' network guess portals better than ours? | **Depends on the data's shape.** On our corner-shaped validation data, ours wins (F1 0.46 vs 0.29). On validation data shaped like the test problems, theirs wins clearly (0.37 vs 0.25). Our corner-shaped training examples put all points in one corner (quadtrees 9–11 levels deep); the test problems don't (2–4) ([details](#comparing-the-two-networks-directly-done)). Our 120,000 model now beats theirs on test-shaped data (0.42 vs 0.37), though the trees only tie ([details](#the-papers-full-120000-examples-done)) |
@@ -58,7 +59,9 @@ The team's running record of the project: where things stand, what each of us ne
 | Does training much longer help? | **Not on 12,000 examples.** A paper-style run (one tree shape, batch 500, no early stopping) memorized them: by epoch 600 training F1 was 0.98 and validation F1 had fallen from 0.24 to 0.18. Its trees got worse too: **3.45%** at epoch 50 (its best), 3.68% at epoch 600 (+0.22 ± 0.11). Even the best is behind the test-shaped 3.28% ([details](#scoring-the-long-run-longer-training-on-12000-examples-doesnt-help-2026-10-19)). **On 120,000 examples it does:** the network no longer memorizes (training F1 only 0.76 after 140 epochs), and the trees improve from 3.62% at epoch 5 to 2.74% at epoch 40, then hold steady ([details](#the-papers-full-120000-examples-done)) |
 | Does NN-Steiner beat FLUTE on bigger problems? | **Yes, from 500 points on, as the paper says.** At 500 / 800 / 1,000 points, plain FLUTE (the paper's baseline) is 3.86% / 4.64% / 5.02% longer than optimal. One try of our model scores **3.03% / 3.39% / 3.49%** and the authors' 3.15% / 3.47% / 3.51% (their paper: 3.16% at 500, 3.52% at 1,000). FLUTE still wins at 100 and 200 points. Our model is slightly ahead of the authors' from 200 to 800 points and ties at 1,000 ([details](#best-of-8-and-bigger-problems-done)) |
 | Can we get better trees without retraining? | **Yes: solve each problem in its 8 orientations and keep the shortest ("best of 8").** On the 100-point exam, ours goes from 2.73% to **1.76%** and the authors' from 2.65% to **1.87%**. It helps at every size (ours: −0.97 points at 100, −0.38 at 1,000) and costs 8× the solve time. With it, NN-Steiner ties plain FLUTE at 200 points (2.30% vs 2.30%) ([details](#best-of-8-and-bigger-problems-done)) |
-| What's running right now? | Nothing. Best of 8 is finished and scored |
+| Can turned copies of a problem replace new problems? | **Yes, for the score.** Training on 12,000 paper-style problems, each in all 8 turns (96,000 examples, patch 0008), scores **2.75%**: a tie with the 120,000 run (+0.02 ± 0.10), and 0.70 ± 0.10 better than the same 12,000 problems unturned (3.45%). The turned copies stop the memorizing just as new problems do. Averaged over the 8 orientations, the 120,000 model keeps a small edge (3.03% vs 3.11% on the 200-point set, +0.08 ± 0.03) ([details](#training-on-turned-copies-done)) |
+| Does training on turned copies make the network care less about orientation? | **No, not measurably.** The spread across a problem's 8 orientations is 1.86 vs 1.95 for the 120,000 model at 100 points (−0.09 ± 0.07), 1.44 vs 1.52 at 200. No model has a favourite direction; the spread comes from imperfect door guesses, which land differently in each orientation ([details](#training-on-turned-copies-done)) |
+| What's running right now? | Nothing. Training on turned copies is finished and scored |
 | What's next? | Other point patterns and 2,000–5,000 points (against FLUTE, since there's no optimal there), then the report, and `portal_weight` if there's time. Details in [What comes next](#what-comes-next) |
 
 "% longer than optimal" is the real score: how much more wire our tree uses than the perfect tree from GeoSteiner. Lower is better. 3.38% means: where the perfect tree needs 100 m of wire, ours uses 103.38 m.
@@ -121,6 +124,8 @@ The team's running record of the project: where things stand, what each of us ne
 
 **Nov 7: the orientation effect is mostly the network.** `scripts/orientation_check.py` built every turned copy's tree without the network. With perfect doors the spread across orientations is about a quarter of the networks' (0.49 vs 1.95 at 100 points), so training on turned copies (idea 02) targets the right thing. Also: a perfect network would score 0.82%, beating FLUTE even at 100 points.
 
+**Nov 7–8: training on turned copies.** Patch 0008 adds `data_gen.turns`, so `data_gen` saves every training problem in all 8 turns, each labelled by GeoSteiner. Made 96,000 examples from the 12,000 paper-style problems (24 min, 7.7 GB) and checked them with `scripts/check_turned_data.py`. Trained 60 epochs at batch 500 (7 h 24 min). The checkpoint picked on the 200-point set (epoch 60, threshold 0.9) scores **2.75%**, a tie with the 120,000 run's 2.73%. Best of 8 on it: the spread across orientations barely moved (1.86 vs 1.95).
+
 **Nov 3–5: best of 8 and bigger problems.** Wrote `scripts/best_of_8.py`: it solves each test problem in its 8 orientations (4 rotations, each mirrored or not) and keeps the shortest tree. A GeoSteiner check proved the turning is right (all 1,600 turned copies of the 100- and 200-point sets keep exactly their optimal length). Scored both models at 100, 200, 500, 800 and 1,000 points. Best of 8 helps both at every size (ours: 2.73% → 1.76% on the exam), and from 500 points on NN-Steiner beats FLUTE, as the paper says.
 
 **Oct 19–20: the paper's full 120,000 examples.** Made 120,000 paper-style examples (9.6 GB) and trained them for 140 epochs at batch 500. It ran in three parts: I paused it twice (at epochs 42 and 123) and restarted from the last numbered checkpoint with `train.checkpoint`. About 22.5 h in all. Validation F1 rose to 0.43 with no memorizing. Scored 6 checkpoints with `scripts/score_checkpoint.sh`. The one picked on the 200-point set (epoch 140, threshold 0.9) scores **2.73%**, a tie with the authors' 2.65% (+0.08 ± 0.09). The number of examples was the gap.
@@ -144,8 +149,10 @@ All scores are on the same exam: the authors' 100 test problems (100 uniformly r
 | **Test-shaped training** (threshold 0.8, picked on the 200-point set) | 12,000 | – | **3.28%** (3.62% at 0.95) |
 | **Paper-style training, much longer** (one tree shape, batch 500; best checkpoint, epoch 50, threshold 0.8) | 12,000 | – | **3.45%** (3.68% after 600 epochs) |
 | **Paper-style training, the paper's full 120,000 examples** (140 epochs, batch 500; epoch 140 and threshold 0.9, both picked on the 200-point set) | 120,000 | – | **2.73%** (2.74% already at epoch 40) |
+| **Paper-style training on turned copies** (the same 12,000 problems, each in all 8 turns; 60 epochs, batch 500; epoch 60 and threshold 0.9, both picked on the 200-point set) | 96,000 (12,000 × 8) | – | **2.75%** |
 | **Best of 8**, authors' model (threshold 0.95) | 120,000 | – | **1.87%** |
 | **Best of 8**, our 120,000 model (threshold 0.9) | 120,000 | – | **1.76%** |
+| **Best of 8**, our turned-copies model (threshold 0.9) | 96,000 (12,000 × 8) | – | **1.90%** |
 | No network (threshold 1.0), authors' model | – | – | 3.72% |
 | No network (threshold 1.0), our 36,000 model | – | – | 3.77% |
 | No network (threshold 1.0), our test-shaped model | – | – | 3.78% |
@@ -205,10 +212,11 @@ FLUTE beating NN-Steiner here is expected. The paper's claim is that NN-Steiner 
 
 12. **On bigger problems the paper's claim holds, and our model holds up.** The authors' model scored by us matches their paper at 200, 500 and 1,000 points too (3.06 / 3.15 / 3.51% vs 3.06 / 3.16 / 3.52%). From 500 points on, both models beat FLUTE on almost every problem, by more as problems grow (ours, one try, vs plain FLUTE: −0.83 points at 500, −1.53 at 1,000). Our model is slightly ahead of the authors' from 200 to 800 points (averaged over the 8 orientations: −0.09 ± 0.03, −0.14 ± 0.02, −0.08 ± 0.02 points) and ties at 1,000 (−0.03 ± 0.02). At 100 and 200 points FLUTE still wins, though best of 8 ties plain FLUTE at 200.
 
-13. **What these results don't cover yet:**
+13. **Turned copies of a problem work as well as new problems, but don't teach orientation-blindness.** Training on the 12,000 paper-style problems, each in all 8 turns, scores **2.75%**: a tie with 120,000 different problems (2.73%, +0.02 ± 0.10) and 0.70 ± 0.10 better than the 12,000 unturned (3.45%, shorter on 78 of 100). Validation F1 at the same number of steps is close to the 120,000 run's (0.380 vs 0.387), and the network didn't memorize. So the 12,000 run's problem was memorizing, and 8 turns fix that as well as 10× more problems. Averaged over the 8 orientations, though, the 120,000 model is a little ahead (2.68 vs 2.74% at 100 points, 3.03 vs 3.11% at 200, +0.08 ± 0.03), so genuinely new problems still add a bit. The orientation spread didn't measurably shrink (1.86 vs 1.95 at 100 points, −0.09 ± 0.07). Neither model ever had a favourite direction (each turn's average is within 0.22 of the others), so there was no bias to train away: the spread comes from imperfect door guesses, which land differently in each orientation. Only a better network shrinks it ([details](#training-on-turned-copies-done)).
+
+14. **What these results don't cover yet:**
    - 2,000–5,000 points. There's no optimal answer there, so the comparison is against FLUTE directly.
    - Other point patterns (normal, mix-normal, non-isotropic).
-   - Whether training on turned copies makes the network less orientation-sensitive. (The effect is mostly the network's: with perfect doors the orientation spread drops to about a quarter.)
    - Runtime. Ours isn't comparable to the paper's anyway: different hardware, and GeoSteiner without CPLEX.
    - Run-to-run luck. Every result is one training run with one seed (42).
 
@@ -452,7 +460,7 @@ Measured training speed on the Mac: about 49 s per epoch on 1,200 examples, 7.9 
 
 The authors' trainer loads the **entire training set into memory** before training. The 1,200 set is 189 MB, so the paper's 120,000 examples would be about **19 GB**. That fits on a 64 GB Mac but likely not on free Colab (about 12–13 GB of RAM). At the measured speeds, one epoch on 120,000 would take roughly **80 minutes** on my Mac.
 
-**Why it matters:** the full dataset size decides where training can happen. Update (Oct 9): the data-scaling study says 120,000 isn't worth it (36,000 scored no better than 12,000), so this limit no longer blocks us. A 12,000 set is 1.9 GB on disk. Update (Oct 19): paper-style examples are about half that size (12,000 = 984 MB), so 120,000 of them is about 10 GB, and at batch 500 an epoch of 120,000 takes about 8–9 min. That's Experiment 5. Update (Oct 20): it ran on my Mac with no memory problems: 9.6 GB on disk, about 22.5 h for 140 epochs ([details](#the-papers-full-120000-examples-done)).
+**Why it matters:** the full dataset size decides where training can happen. Update (Oct 9): the data-scaling study says 120,000 isn't worth it (36,000 scored no better than 12,000), so this limit no longer blocks us. A 12,000 set is 1.9 GB on disk. Update (Oct 19): paper-style examples are about half that size (12,000 = 984 MB), so 120,000 of them is about 10 GB, and at batch 500 an epoch of 120,000 takes about 8–9 min. That's Experiment 5. Update (Oct 20): it ran on my Mac with no memory problems: 9.6 GB on disk, about 22.5 h for 140 epochs ([details](#the-papers-full-120000-examples-done)). Update (Nov 8): the 96,000 turned copies (7.7 GB) also fit, but 120,000 × 8 turns would be about 77 GB, more than the Mac's 64 GB. Turning more problems needs the trainer to load files as it goes ([details](#training-on-turned-copies-done)).
 
 ---
 
@@ -918,6 +926,80 @@ On test problem 0 its correct-doors tree is exactly the authors' `flow=eval` `pr
 
 ---
 
+## Training on turned copies (done)
+
+### 12,000 problems turned 8 ways: 2.75%, a tie with 120,000 different problems (2026-11-07 to 11-08)
+
+**The question.** On 12,000 paper-style problems the network memorized (3.45%); on 120,000 it kept learning (2.73%). Every problem can be turned 8 ways (the same 8 turns as best of 8), and each copy is a valid problem with the same optimal length. **Do turned copies of the same 12,000 problems work as well as 120,000 new ones?** And does a network trained on all 8 turns care less about which way a problem faces? In ML terms this is data augmentation.
+
+**How.**
+- **Patch 0008** adds `data_gen.turns` (1 = off, the default). With `turns: 8` and `batch: 96000`, file `idx` holds base problem `idx % 12000` in turn `(idx // 12000 + base) % 8` (`sample_turn` in `lib/turns.py`). The authors' trainer never shuffles (it batches files in number order, the same way every epoch), so this order makes every batch of 500 hold 500 different problems with mixed turns, like the 12,000 and 120,000 runs.
+- Each base problem keeps its seed (`seed + base`), so the base problems are exactly the 12,000 paper-style set (seed 100000), and every turn-0 file is byte-identical to that set's file.
+- The turn is applied after the points are fitted to the shared depth-3 tree and before GeoSteiner, so **GeoSteiner labels each turned copy itself**. The shared tree's cell edges are multiples of 1,250 and training points are whole numbers 0–9999, so with `9999 − x` every turned problem fits the same tree exactly.
+- Data: `scripts/arora.sh symmetry 'flow=[data_gen]' data_gen.seed=100000 data_gen.batch=96000` (`configs/symmetry.yaml`): 24 min, 7.7 GB, 163.8 points per example on average (the same as the 12,000 set). No GeoSteiner stalls.
+- Training: the paper-style recipe (batch 500, no early stopping, the same validation and test sets, not turned), 60 epochs = 11,520 steps, checkpoints every 5 epochs. Run folder `2026-11-07/20-03-14`, 7 h 24 min.
+- Scoring: `score_checkpoint.sh` on epochs 20, 40, 55 (best validation F1) and 60; then `best_of_8.py` on the picked one.
+
+**Checks** (`scripts/check_turned_data.py`, on the full set):
+- All 12,000 turn-0 files are byte-identical to the 12,000 paper-style set.
+- For 20 base problems spread over the set, in all 8 turns: the points stored in each file are exactly the turned points, the tree is the shared one, the labels equal GeoSteiner's on the turned points, and GeoSteiner's optimal length is the same in all 8 turns.
+- On 16 of the 20, GeoSteiner's tree uses the same number of doors in every turn; on 4 it differs by 1–2 (an equally short, different tree). So the labels aren't exact mirror images of each other, the way new problems' labels wouldn't be either.
+
+**Learning curve** (validation F1, the same validation set for all three runs; 192 steps per epoch here, 240 for 120,000, 24 for 12,000):
+
+| Run | At 9,600 steps | Best | Training F1 at the end |
+|---|---|---|---|
+| 12,000 paper-style | about 0.2 (memorizing since about 2,900 steps) | 0.2415 | 0.98 (epoch 600) |
+| **12,000 × 8 turns** | **0.380** (epoch 50) | **0.383** (epoch 55) | 0.59 (epoch 60) |
+| 120,000 paper-style | 0.387 (epoch 40) | 0.430 (epoch 135) | 0.76 (epoch 140) |
+
+Validation F1 was still creeping up at epoch 60 (0.370 at 45 → 0.383 at 55, 0.382 at 60).
+
+**Scores, % longer than optimal** (each checkpoint at its own threshold, picked on the 200-point set; all picked 0.9):
+
+| Epoch | 200-point set | 100-point set |
+|---|---|---|
+| 20 | 3.25 | 2.97 |
+| 40 | 3.16 | 2.82 |
+| 55 (best validation F1) | 3.06 | 2.70 |
+| **60 (picked)** | **3.01** | **2.75** |
+
+**Epoch 60 problem by problem** (negative = the turned-copies model shorter; in brackets, on how many of 100 problems it's shorter):
+
+| vs | 100-point set | 200-point set |
+|---|---|---|
+| 120,000 run, epoch 140 (2.73%) | +0.02 ± 0.10 (48) | +0.07 ± 0.08 (48) |
+| 120,000 run, epoch 40 (9,600 steps, about the same) | +0.02 ± 0.10 (46) | −0.04 ± 0.07 (55) |
+| 12,000 paper-style, epoch 50 (3.45%) | **−0.70 ± 0.10 (78)** | **−0.45 ± 0.07 (75)** |
+| Authors' model (2.65%) | +0.11 ± 0.09 (46) | – |
+| Epoch 55 | +0.06 ± 0.07 (50) | −0.05 ± 0.07 (48) |
+
+**Best of 8 and orientation** (`best_of_8.py`, epoch 60, threshold 0.9; spread = a problem's longest minus shortest orientation, % of optimal):
+
+| Points | Model | Average of the 8 orientations | Best of 8 | Spread |
+|---|---|---|---|---|
+| 100 | **Turned copies** | 2.74 | 1.90 | **1.86** |
+| 100 | 120,000 | 2.68 | 1.76 | 1.95 |
+| 100 | Authors' | 2.75 | 1.87 | 1.90 |
+| 200 | **Turned copies** | 3.11 | 2.43 | **1.44** |
+| 200 | 120,000 | 3.03 | 2.30 | 1.52 |
+| 200 | Authors' | 3.12 | 2.41 | 1.47 |
+
+Turned copies vs the 120,000 model, problem by problem: spread −0.09 ± 0.07 (100 points) and −0.08 ± 0.06 (200); average of the 8 orientations +0.06 ± 0.04 and +0.08 ± 0.03; best of 8 +0.13 ± 0.05 and +0.14 ± 0.04. Against the authors' model all three are ties (every difference 0.04 or less, each with ± 0.04–0.08). Each turn's average score is within 0.22 of the others, and each turn gives the shortest tree on 8–18 of the 100 problems at 100 points (12.5 expected by chance).
+
+**What it shows.**
+- **Turned copies replace new problems, for the score.** 12,000 problems × 8 turns tie 120,000 different problems on one try (+0.02 ± 0.10) and beat the same 12,000 unturned by 0.70. They stop the memorizing the same way: training F1 0.59 vs 0.98, and validation F1 kept rising. So the 12,000 run's problem was memorizing, not a lack of variety the turns can't give.
+- **New problems still add a little.** On the steadier average-of-8-orientations score, the 120,000 model is ahead by 0.06–0.08 (about 2.7 standard errors at 200 points), and by 0.13–0.14 with best of 8. So "12,000 × 8 ≈ 120,000" holds to within about 0.1 point, not exactly.
+- **It didn't make the network orientation-blind.** The spread shrank by 0.09 ± 0.07, within noise, and is still about 4× the perfect-doors spread (0.49). The models never had a favourite direction to train away (each turn's average is within 0.22). The spread is what imperfect door guesses look like when every turned copy is effectively a new problem: the mistakes land in different places. Only a better network shrinks it.
+- **The labels cost the same, the problems don't.** Only 12,000 random problems were drawn, but GeoSteiner still solved all 96,000 turned copies (its labels aren't exact mirror images, so they can't be turned instead). Turning the tensors inside the trainer would avoid that, at the price of slightly different labels.
+- **Averaging over the 8 orientations is the fairer way to compare models** (± 0.03–0.04 vs ± 0.10 for one try). On it, our 120,000 model is ahead of the authors' (2.68 vs 2.75%) and the turned-copies model ties them (2.74 vs 2.75%).
+
+**Caveats.** One run, one seed. Epoch 60 was the last checkpoint and the best on the 200-point set, so more epochs might gain a little (the 120,000 run's 200-point score also crept down from epoch 40 to 140). A bigger turned set (120,000 × 8) doesn't fit my Mac: the trainer loads the whole training set into memory (about 77 GB for 960,000 examples, on a 64 GB machine).
+
+![Score vs number of different training problems](../results/scaling.png)
+
+---
+
 ## What comes next
 
 **Now that Experiments 1–5 are done** (data scaling, threshold, data shape, long training, and the paper's full 120,000 examples), in this order:
@@ -930,6 +1012,7 @@ On test problem 0 its correct-doors tree is exactly the authors' `flow=eval` `pr
 - `m` (portals per cell side): 3, 7 or 15. Needs new data.
 - Train on uniform points, test on other point patterns. Overlaps with the evaluation baselines.
 - 120,000 test-shaped examples: does the tree shape still matter once there's enough data?
+- More problems on top of turning: 30,000 × 8 turns (240,000 examples, about 19 GB in memory, about 13 h) would show whether turning adds to new problems. 120,000 × 8 needs the trainer to load data as it goes instead of all at once.
 
 **Report:** I lead Methodology & model, and help with Dataset and Experimental setup.
 
@@ -948,6 +1031,7 @@ On test problem 0 its correct-doors tree is exactly the authors' `flow=eval` `pr
 | Grade models' portal guesses (F1, precision, recall) without solving | `python scripts/val_f1.py <model.pt> [more models...]` |
 | Score a trained model on the 100 test problems, threshold picked on the 200-point set | `scripts/score_checkpoint.sh <model.pt> <name> [thresholds...]` |
 | Solve each test problem in its 8 orientations and keep the shortest (best of 8) | `python scripts/best_of_8.py solve <model.pt> <name> <threshold> --sizes 100 200` |
+| Check a training set made with `data_gen.turns` | `python scripts/check_turned_data.py` |
 | Run the unit tests | `python -m unittest discover -s tests` |
 | Do all of this on Colab | `notebooks/colab.ipynb` |
 
@@ -959,7 +1043,7 @@ Run it once per machine (on Colab, once per session, since Colab wipes everythin
 
 1. **Checks the Python version.** It must be 3.10–3.13, because Hydra breaks on 3.14. Otherwise it stops and tells you how to make a venv.
 2. **Downloads the authors' code** into `third_party/NN-Steiner/`, at a fixed commit so we all run the same version. It skips the 770 MB model (`get_pretrained.sh` fetches that). Skipped if the code is already there.
-3. **Applies our patches** from `third_party/patches/` in number order, printing `applied` or `already applied` for each. This is why re-running it after a pull picks up new patches.
+3. **Applies our patches** from `third_party/patches/` in number order, printing `applied` or `already applied` for each. This is why re-running it after a pull picks up new patches. Patch 0008 edits lines 0005 added, so it checks them as a stack: it applies the patches one by one to a clean copy of the authors' files and finds the step that matches what's on disk. If none matches (someone edited `third_party/NN-Steiner/` by hand), it stops with a message.
 4. **Installs dependencies:**
    - Colab (Linux): build tools, GMP and friends via `apt`.
    - Mac: `gmp`, `cmake` and `libtool` via Homebrew. Homebrew's `libtool` provides `glibtool`, which GeoSteiner needs; Apple's own `libtool` can't build it.
@@ -983,7 +1067,7 @@ What it does:
 2. Makes sure the `work/` folders exist. The authors' data generator crashes if they don't.
 3. **Picks the device for solving:** NVIDIA GPU (`cuda:0`), then Apple GPU (`mps`), then CPU, unless you pass `model.device=...` yourself. Training picks its own device the same way (patch 0002).
 4. Lets PyTorch fall back to the CPU for any operation Apple's GPU doesn't support, instead of crashing.
-5. Moves into `work/` and runs the authors' program (`python -m arora`). The final settings are stacked like this (later wins):
+5. Moves into `work/` and runs the authors' program (`python -m arora`), with our `lib/` on the Python path after the authors' code (patch 0008 imports `lib/turns.py` from there). The final settings are stacked like this (later wins):
 
 ```
 authors' conf/config.yaml  +  configs/<config>.yaml  +  your command-line settings
@@ -1088,7 +1172,18 @@ python scripts/best_of_8.py solve models/m15_kb4_n120000.pt p120k 0.9 --sizes 10
 - Results go to `work/exp_out/best8-<name>-thr<threshold>-<n>pt-*`: one solved file and log per orientation, the combined `-best2/4/8-solved.txt` (gradable with `evaluateRatio.py`) and a per-problem `.csv`.
 - Finished solves are reused, so a stopped run (Ctrl-C) can just be started again. Use a new `<name>` per model. `--jobs 4` solves 4 copies at once; the solve times are then not comparable.
 - `check` solves every turned copy exactly with GeoSteiner and compares with the optimal file. It should end with `check passed`.
-- The 8 turns live in `lib/turns.py`; unit tests in `tests/` (`python -m unittest discover -s tests`, 20 tests, about 1 s).
+- The 8 turns live in `lib/turns.py`; unit tests in `tests/` (`python -m unittest discover -s tests`, 29 tests, about 1 s).
+
+### `scripts/check_turned_data.py`: check a turned training set (about 1 min)
+
+```bash
+python scripts/check_turned_data.py      # defaults: the 96,000 set vs the 12,000 set, seed 100000
+```
+
+- Reads the batch size and number of turns from the folder name (`...-96000-turns8-tensor`).
+- Checks that every turn-0 file is byte-identical to the plain set's file for the same base problem (`--plain`).
+- For `--bases` base problems (default 20) it rebuilds each problem, then for every turn checks the stored points, the shared tree, the labels (rebuilt with GeoSteiner) and that the optimal length is the same in all 8 turns. It prints the doors used per turn and ends with `ALL CHECKS PASSED`.
+- `--seed` must be the `data_gen.seed` the set was made with (100000 for ours).
 
 ### `notebooks/colab.ipynb`: the same, on Colab
 
@@ -1318,6 +1413,16 @@ PY
 ```
 Plain FLUTE (the paper's baseline) is `third_party/NN-Steiner/flute_out/flute<n>_10000x10000-uniform.txt`.
 
+**Training on turned copies** (`configs/symmetry.yaml`; about 25 min for the data, 7.5 h to train, 1 h 20 min to score 4 checkpoints, 40 min for best of 8). Data generation ends with `points summary: mean: 163.81...`, the check with `ALL CHECKS PASSED`, and epoch 60 prints `100-point set at 0.9: 2.754%` and `best of 8: 1.90%` at 100 points:
+```bash
+scripts/arora.sh symmetry 'flow=[data_gen]' data_gen.seed=100000 data_gen.batch=96000
+python scripts/check_turned_data.py
+PYTHONUNBUFFERED=1 caffeinate -i scripts/arora.sh symmetry train.epochs=60 train.keep_every=5 2>&1 | tee work/symmetry-96000.log
+R=outputs/2026-11-07/20-03-14/train/model     # your run folder
+for e in 20 40 55 60; do scripts/score_checkpoint.sh $R/nnArora_ep$e.pt sym-ep$e 2>&1 | tee -a work/sym-scores.log; done
+python scripts/best_of_8.py solve $R/nnArora_ep60.pt sym-ep60 0.9 --sizes 100 200 2>&1 | tee work/best8-sym.log
+```
+
 ---
 
 ## Where everything is
@@ -1339,6 +1444,7 @@ Everything under `work/` is on my Mac only (it isn't in git or on Drive). Tell m
 | `2026-10-19/15-15-43` | **120,000 paper-style examples, part 1:** epochs 0–40 (paused at 42) |
 | `2026-10-20/00-11-40` | **Part 2:** from part 1's `nnArora_ep40.pt`; overall epochs 40–120 (its `ep<N>` is epoch N + 40; paused at 123) |
 | `2026-10-20/15-31-53` | **Part 3:** from part 2's `nnArora_ep80.pt`; overall epochs 120–140 (its `ep<N>` is epoch N + 120). Its `nnArora_ep20.pt` (epoch 140) is our best model: **2.73%** at threshold 0.9 |
+| `2026-11-07/20-03-14` | **Turned copies: the 12,000 paper-style problems × 8 turns** (96,000 examples), 60 epochs, checkpoints every 5. Its `nnArora_ep60.pt`: **2.75%** at threshold 0.9 |
 
 Inside a training run: `train/` holds the TensorBoard curves, and `train/model/nnArora.pt` is the best model by validation F1. For runs with numbered checkpoints (`nnArora_ep<N>.pt`) I pick by scoring instead (`score_checkpoint.sh`).
 
@@ -1354,6 +1460,8 @@ Inside a training run: `train/` holds the TensorBoard curves, and `train/model/n
 | `thr-shape12000-t<threshold>-`, `thr200-shape12000-t<threshold>-solved.txt` | Threshold sweep of the test-shaped model on the 100- and 200-point sets (best: 0.8, 3.28% on both) |
 | `thr-paper-ep<N>-t<threshold>-`, `thr200-paper-ep<N>-t<threshold>-solved.txt` | The long paper-style run's checkpoints (epochs 50, 120, 200, 400, 600), from `score_checkpoint.sh` (best: epoch 50 at 0.8, 3.45%) |
 | `thr-p120k-ep<N>-t<threshold>-`, `thr200-p120k-ep<N>-t<threshold>-solved.txt` | The 120,000 run's checkpoints (overall epochs 5, 40, 80, 110, 135, 140), from `score_checkpoint.sh` (picked: epoch 140 at 0.9, 2.73%) |
+| `thr-sym-ep<N>-t<threshold>-`, `thr200-sym-ep<N>-t<threshold>-solved.txt` | The turned-copies run's checkpoints (epochs 20, 40, 55, 60), from `score_checkpoint.sh` (picked: epoch 60 at 0.9, 2.75%) |
+| `best8-<name>-thr<threshold>-<n>pt-*` | Best of 8: one solved file per orientation, the combined best-of-2/4/8 files and a per-problem `.csv`. Names: `p120k`, `pretrained`, `sym-ep60` |
 | `scale-1200-last-`, `scale-12000-last-`, `scale-36000-ep60-solved.txt` | Each run's **last** checkpoint (4.00%, 3.53%, 3.70%) |
 | `check-refine-on/off-100-uniform-solved.txt` | Authors' model with cleanup on / off |
 | `check-medium30-refine-on/off-100-uniform-solved.txt` | My 30-epoch model with cleanup on / off |
@@ -1375,13 +1483,15 @@ Inside a training run: `train/` holds the TensorBoard curves, and `train/model/n
 | `batch240_10000x10000-uniform-12000-tensor` | Test-shaped training, 12,000, seed 100000, 180 points | – |
 | `level3_10000x10000-uniform-12000-tensor` | Paper-style training, 12,000, seed 100000: one full depth-3 tree for every example, about 164 points | 984 MB |
 | `level3_10000x10000-uniform-120000-tensor` | Paper-style training, 120,000, same settings and seed | 9.6 GB |
+| `level3_10000x10000-uniform-96000-turns8-tensor` | Turned copies: the 12,000 paper-style problems (seed 100000) in all 8 turns, 96,000 files; turn-0 files identical to the 12,000 set's | 7.7 GB |
 
 **Files in the repo:**
 
 | File | What it is |
 |---|---|
-| `scripts/setup.sh`, `common.sh`, `arora.sh`, `smoke_test.sh`, `get_pretrained.sh`, `val_f1.py`, `score_checkpoint.sh` | Setup, the run launcher, and helpers. Details in [Our scripts](#our-scripts-and-what-each-one-does) |
-| `configs/smoke.yaml`, `medium.yaml`, `pretrained_solve.yaml`, `scale.yaml`, `shape.yaml`, `paper.yaml` | Settings for each kind of run (table in [Our scripts](#our-scripts-and-what-each-one-does)) |
+| `scripts/setup.sh`, `common.sh`, `arora.sh`, `smoke_test.sh`, `get_pretrained.sh`, `val_f1.py`, `score_checkpoint.sh`, `best_of_8.py`, `orientation_check.py`, `check_turned_data.py`, `make_figures.py` | Setup, the run launcher, and helpers. Details in [Our scripts](#our-scripts-and-what-each-one-does) |
+| `lib/turns.py`, `tests/` | The 8 turns (shared by best of 8 and patch 0008) and their unit tests |
+| `configs/smoke.yaml`, `medium.yaml`, `pretrained_solve.yaml`, `scale.yaml`, `shape.yaml`, `paper.yaml`, `symmetry.yaml` | Settings for each kind of run (table in [Our scripts](#our-scripts-and-what-each-one-does)) |
 | `notebooks/colab.ipynb` | The Colab entry point |
 | `third_party/patches/0001–0008` | Our fixes to the authors' code |
 | `docs/Project_Proposal.md`, `Team_Responsibilities.md`, this file | The proposal, the plan, and this record |
@@ -1391,12 +1501,12 @@ Inside a training run: `train/` holds the TensorBoard curves, and `train/model/n
 ## Open questions
 
 - **Does our 120,000 model hold up on other point patterns and at 2,000–5,000 points?** (evaluation, with the 120,000 model)
-- **Does training on turned copies make the network care less about orientation,** and does it replace new examples? (symmetry augmentation, 1–2 overnight runs)
 - **Is our 2.73% repeatable?** It's one training run with one seed. A second seed would show how much run-to-run luck there is (about 20 h). (if there's time)
 - **Which more experiment do we commit to?** Five are done (data scaling, threshold, data shape, long training, the paper's full 120,000 examples). I propose `portal_weight` if there's time; see [What comes next](#what-comes-next). (the team decides)
 - **Does loading the latest checkpoint instead of the best one** change the authors' reported test numbers?
 
 **Answered:**
+- *Do turned copies replace new examples, and make the network care less about orientation?* They replace new examples for the score (12,000 × 8 turns: 2.75%, a tie with 120,000's 2.73%), but the orientation spread barely moved (1.86 vs 1.95) ([details](#training-on-turned-copies-done)).
 - *How much of the orientation effect comes from the network?* Most of it: with perfect doors the spread across orientations drops from 1.95 to 0.49 (100 points) and from 1.52 to 0.44 (200 points) ([details](#most-of-the-orientation-effect-is-the-network-not-the-cleanup-steps-2026-11-07)).
 - *Does NN-Steiner beat FLUTE on bigger problems in our setup?* Yes, from 500 points on, for both models, and our 120,000 model holds up there (slightly ahead of the authors' from 200 to 800 points, a tie at 1,000) ([details](#best-of-8-and-bigger-problems-done)).
 - *Do 10× more examples close the gap?* Yes, for paper-style data: 120,000 examples score 2.73%, a tie with the authors' 2.65% (+0.08 ± 0.09) ([details](#the-papers-full-120000-examples-done)).
@@ -1441,4 +1551,8 @@ Inside a training run: `train/` holds the TensorBoard curves, and `train/model/n
 | Numbered checkpoint | `train/model/nnArora_ep<N>.pt`, saved every `train.keep_every` epochs (patch 0006), so a run's history survives |
 | Restarting from a checkpoint | `train.checkpoint=<file>` starts a new run from saved weights. It isn't an exact resume: epochs, best-F1 tracking and Adam's momentum start over |
 | 200-point set / 100-point set | The authors' two uniform test sets, 100 problems each. The 200-point set picks each model's threshold and checkpoint; the 100-point set is the exam we report, touched once |
+| Turn / orientation | One of the 8 ways to turn a problem: 0°, 90°, 180° or 270°, each mirrored or not. The optimal length stays the same |
+| Turned copy / base problem | A training problem saved in another turn (patch 0008, `data_gen.turns`) / the original problem it came from |
+| Data augmentation | Making extra training examples by changing existing ones in ways that keep the answer valid, here by turning them |
+| Spread (orientation spread) | A problem's longest minus shortest tree over its 8 orientations, as % of optimal, averaged over problems. 0 would mean the model doesn't care which way a problem faces |
 | Distribution shift | When training examples look different from the problems a model is tested on. Models usually do worse on the unfamiliar kind |

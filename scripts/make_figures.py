@@ -26,6 +26,8 @@ RESULTS = os.path.join(REPO, "results")
 DEFAULT_DATA = [(1_200, 3.77), (12_000, 3.38), (36_000, 3.38)]
 TEST_SHAPED = [(12_000, 3.28)]
 PAPER_SETUP = [(12_000, 3.45), (120_000, 2.73)]
+# The same 12,000 paper-style problems, each in all 8 turns (96,000 examples)
+TURNED = [(12_000, 2.75)]
 AUTHORS = 2.65
 NO_NETWORK = 3.72
 
@@ -69,13 +71,16 @@ def scaling_plot(path: str) -> None:
         xs, ys = zip(*points)
         ax.plot(xs, ys, color=color, lw=2, marker=marker, ms=8, mec=SURFACE, mew=1.5, label=label, zorder=3)
 
+    # Turned copies add no new problems, so the point sits at 12,000 with no line
+    ax.plot(*zip(*TURNED), ls="none", color=BLUE, marker="*", ms=15, mec=SURFACE, mew=1.2, label="Paper's setup, each turned 8 ways (96,000 examples)", zorder=4)
     ax.annotate("2.73%", PAPER_SETUP[-1], xytext=(9, 0), textcoords="offset points", ha="left", va="center", color=INK, fontsize=10)
+    ax.annotate("2.75%", TURNED[-1], xytext=(10, 0), textcoords="offset points", ha="left", va="center", color=INK, fontsize=10)
     ax.set_xscale("log")
     ax.set_xticks([1_200, 12_000, 36_000, 120_000], ["1,200", "12,000", "36,000", "120,000"])
     ax.minorticks_off()
     ax.set_xlim(900, 230_000)
     ax.set_ylim(2.3, 4.0)
-    ax.set_xlabel("Training examples (log scale)")
+    ax.set_xlabel("Different training problems (log scale)")
     ax.set_ylabel("% longer than the optimal tree (lower is better)")
     ax.grid(axis="y", color=GRID, lw=0.8)
     ax.set_axisbelow(True)
@@ -84,8 +89,8 @@ def scaling_plot(path: str) -> None:
         ax.spines[side].set_visible(False)
     ax.tick_params(length=0)
 
-    ax.legend(loc="lower left", bbox_to_anchor=(0, 1.0), ncol=3, frameon=False, fontsize=9, labelcolor=INK_2, handlelength=2.2, columnspacing=1.6, borderaxespad=0.2)
-    fig.suptitle("With the paper's 120,000 examples, our model ties the authors'", x=0.02, ha="left", fontsize=12.5)
+    ax.legend(loc="lower left", bbox_to_anchor=(0, 1.0), ncol=2, frameon=False, fontsize=9, labelcolor=INK_2, handlelength=2.2, columnspacing=1.6, borderaxespad=0.2)
+    fig.suptitle("12,000 problems turned 8 ways match 120,000 different ones", x=0.02, ha="left", fontsize=12.5)
 
     fig.tight_layout()
     fig.savefig(path, dpi=200)

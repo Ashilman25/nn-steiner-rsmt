@@ -10,7 +10,7 @@ The model code is the authors' ([ABKGroup/NN-Steiner](https://github.com/ABKGrou
 
 The score is how much longer a tree is than the optimal one from GeoSteiner (an exact solver), averaged over the authors' 100 test problems of 100 random points each. Lower is better.
 
-![Score vs number of training examples](results/scaling.png)
+![Score vs number of different training problems](results/scaling.png)
 
 | Model | Training examples | % longer than optimal |
 |---|---|---|
@@ -22,12 +22,14 @@ The score is how much longer a tree is than the optimal one from GeoSteiner (an 
 | Ours, test-shaped data | 12,000 | 3.28 |
 | Ours, paper's setup | 12,000 | 3.45 |
 | **Ours, paper's setup** | **120,000** | **2.73** |
+| **Ours, paper's setup, 12,000 problems each turned 8 ways** | **96,000** | **2.75** |
 | No network (cleanup step only) | | 3.72 |
 | FLUTE (standard heuristic) | | 1.25 |
 
 - **Upstream default data:** the settings from the authors' example. All points land in one corner of the quadtree's box, so the trees are much deeper than in the test problems.
 - **Test-shaped data:** points spread over the whole box, like the test problems.
 - **Paper's setup:** how the paper says it trained: one shared quadtree shape, batches of 500, no early stopping.
+- **Turned 8 ways:** each of the 12,000 problems saved in all 8 orientations (4 rotations, each mirrored or not), each labeled by GeoSteiner (patch 0008).
 
 FLUTE is still better at 100 points. The paper's claim is that NN-Steiner wins on bigger problems (500+ points), and in our runs it does.
 
@@ -52,6 +54,7 @@ Turning or mirroring a problem doesn't change its optimal tree, but it does chan
 - The number of training examples was the gap. On the default data, going from 12,000 to 36,000 examples changed nothing. Changing the data's shape or the portal threshold only helped a little. With the paper's setup and its full 120,000 examples, our model ties the authors': +0.08 ± 0.09 points, and ours is shorter on 52 of the 100 problems. That took about 22 hours on a Mac, roughly 1/36 of the paper's training.
 - NN-Steiner beats FLUTE from 500 points on, as the paper says, and our model holds up there: slightly ahead of the authors' from 200 to 800 points, a tie at 1,000.
 - NN-Steiner cares a lot about which way a problem faces, though it shouldn't: the 8 orientations of a problem never all give the same length. Keeping the shortest of the 8 takes our model from 2.73% to 1.76% on the 100-point test, and helps at every size.
+- Turned copies of a problem work almost as well as new problems. Training on the 12,000 problems each turned 8 ways scores 2.75%, a tie with 120,000 different problems (+0.02 ± 0.10) and 0.70 better than the 12,000 unturned. It doesn't make the network care less about orientation, though: the spread across a problem's 8 orientations barely moved (1.86 vs 1.95 points).
 - With too few examples, long training just memorizes. On 12,000 examples the paper's setup reached training F1 0.98 while validation F1 fell, and the trees got worse. With 120,000, training F1 only reached 0.76, and the trees improved until about epoch 40 and then held steady.
 
 Every experiment, with run folders and error bars, is in [docs/Findings.md](docs/Findings.md).
