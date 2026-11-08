@@ -9,7 +9,7 @@ The team's running record of the project: where things stand, what each of us ne
 - Background on the paper: [Project_Proposal.md](Project_Proposal.md)
 - Who owns what: [Team_Responsibilities.md](Team_Responsibilities.md)
 
-*Last updated: 2026-11-05*
+*Last updated: 2026-11-07*
 
 ---
 
@@ -119,6 +119,8 @@ The team's running record of the project: where things stand, what each of us ne
 
 **Oct 18–19: the long paper-style run.** Trained on the 12,000 paper-style examples at batch 500 with no early stopping. By epoch 609 it was memorizing (training F1 0.98, validation F1 down from 0.24 at epoch 120 to 0.18), so I stopped it at epoch 611. Wrote `scripts/score_checkpoint.sh` and scored 5 of its checkpoints: the trees got a little worse as it memorized (3.45% at epoch 50, 3.68% at epoch 600), and all are behind the test-shaped 3.28%. Training longer on 12,000 examples doesn't help; next is the paper's full 120,000.
 
+**Nov 7: the orientation effect is mostly the network.** `scripts/orientation_check.py` built every turned copy's tree without the network. With perfect doors the spread across orientations is about a quarter of the networks' (0.49 vs 1.95 at 100 points), so training on turned copies (idea 02) targets the right thing. Also: a perfect network would score 0.82%, beating FLUTE even at 100 points.
+
 **Nov 3–5: best of 8 and bigger problems.** Wrote `scripts/best_of_8.py`: it solves each test problem in its 8 orientations (4 rotations, each mirrored or not) and keeps the shortest tree. A GeoSteiner check proved the turning is right (all 1,600 turned copies of the 100- and 200-point sets keep exactly their optimal length). Scored both models at 100, 200, 500, 800 and 1,000 points. Best of 8 helps both at every size (ours: 2.73% → 1.76% on the exam), and from 500 points on NN-Steiner beats FLUTE, as the paper says.
 
 **Oct 19–20: the paper's full 120,000 examples.** Made 120,000 paper-style examples (9.6 GB) and trained them for 140 epochs at batch 500. It ran in three parts: I paused it twice (at epochs 42 and 123) and restarted from the last numbered checkpoint with `train.checkpoint`. About 22.5 h in all. Validation F1 rose to 0.43 with no memorizing. Scored 6 checkpoints with `scripts/score_checkpoint.sh`. The one picked on the 200-point set (epoch 140, threshold 0.9) scores **2.73%**, a tie with the authors' 2.65% (+0.08 ± 0.09). The number of examples was the gap.
@@ -206,7 +208,7 @@ FLUTE beating NN-Steiner here is expected. The paper's claim is that NN-Steiner 
 13. **What these results don't cover yet:**
    - 2,000–5,000 points. There's no optimal answer there, so the comparison is against FLUTE directly.
    - Other point patterns (normal, mix-normal, non-isotropic).
-   - How much of the orientation effect (point 11) comes from the network and how much from the cleanup steps.
+   - Whether training on turned copies makes the network less orientation-sensitive. (The effect is mostly the network's: with perfect doors the orientation spread drops to about a quarter.)
    - Runtime. Ours isn't comparable to the paper's anyway: different hardware, and GeoSteiner without CPLEX.
    - Run-to-run luck. Every result is one training run with one seed (42).
 
@@ -879,9 +881,39 @@ Averaging over the 8 orientations removes most of the orientation luck, so its �
 - A large improvement with no training: about 1 point on the exam for both models.
 - NN-Steiner is far from orientation-blind, even though turning a problem changes nothing about its answer. That's the motivation for training on turned copies (symmetry augmentation), which would test whether a network can learn not to care.
 - One-try comparisons between models carry orientation luck. The authors' 2.65% was a good orientation; averaged over all 8 it's 2.75%, and ours 2.68%.
-- Open: how much of the orientation effect comes from the network and how much from the cleanup steps (`refine_leaves`, `post_process`). Solving the 8 orientations with the correct doors given would separate the two.
+- Most of the orientation effect is the network's: with perfect doors the spread drops to about a quarter ([next finding](#most-of-the-orientation-effect-is-the-network-not-the-cleanup-steps-2026-11-07)).
 
 ![Best of 8 by problem size, and score vs number of tries](../results/best_of_8.png)
+
+### Most of the orientation effect is the network, not the cleanup steps (2026-11-07)
+
+**The question.** Best of 8 showed NN-Steiner's trees change a lot with orientation. That could come from the network or from the cleanup steps that turn its doors into a tree (RMST, `refine_leaves`, `post_process`). Training on turned copies (symmetry augmentation) can only fix the network's part.
+
+**How.** `scripts/orientation_check.py` builds every turned copy's tree with no network involved, through the same code NN-Steiner uses (`NNSteiner.build_stt`):
+- **correct doors**: the doors GeoSteiner's optimal tree uses, i.e. a perfect network;
+- **no doors**: the cleanup steps alone.
+
+On test problem 0 its correct-doors tree is exactly the authors' `flow=eval` `processed_cost` (72,408), so it's their code path.
+
+**Results** (100 problems × 8 orientations; spread = longest minus shortest orientation, % of optimal, averaged over problems):
+
+| Points | Trees from | Average | Spread | All 8 the same length |
+|---|---|---|---|---|
+| 100 | correct doors (perfect network) | 0.82% | 0.49 | 0 of 100 |
+| 100 | no doors (cleanup steps only) | 3.79% | 0.26 | 35 |
+| 100 | our network | 2.68% | **1.95** | 0 |
+| 100 | authors' network | 2.75% | **1.90** | 0 |
+| 200 | correct doors (perfect network) | 1.02% | 0.44 | 0 |
+| 200 | no doors (cleanup steps only) | 3.79% | 0.31 | 7 |
+| 200 | our network | 3.03% | **1.52** | 0 |
+| 200 | authors' network | 3.12% | **1.47** | 0 |
+
+**What it shows.**
+- **The network is the main source.** With perfect doors, the orientation spread drops to about a quarter (0.49 vs 1.95 at 100 points, 0.44 vs 1.52 at 200). The cleanup steps alone vary even less (0.26 / 0.31). So roughly three quarters of the effect comes from the networks' door guesses, the part training on turned copies can target.
+- The correct-doors spread is an upper bound on the cleanup steps' share: GeoSteiner can return a different, equally short optimal tree for each turned copy, so the "correct doors" aren't always exact mirror images of each other.
+- **A perfect network would beat FLUTE even at 100 points:** 0.82% vs FLUTE's 1.25% (1.16% refined). Our network at 2.68% (averaged over orientations) is far from that ceiling: about 1.9 points of room left on the network side.
+
+**Why it matters.** It justifies idea 02 (training on turned copies): the orientation sensitivity is mostly in what the network learned, not in the classic steps around it.
 
 ---
 
@@ -1358,13 +1390,13 @@ Inside a training run: `train/` holds the TensorBoard curves, and `train/model/n
 ## Open questions
 
 - **Does our 120,000 model hold up on other point patterns and at 2,000–5,000 points?** (evaluation, with the 120,000 model)
-- **How much of the orientation effect comes from the network, and how much from the cleanup steps?** Solving the 8 orientations with the correct doors given would separate the two. (cheap, no training)
 - **Does training on turned copies make the network care less about orientation,** and does it replace new examples? (symmetry augmentation, 1–2 overnight runs)
 - **Is our 2.73% repeatable?** It's one training run with one seed. A second seed would show how much run-to-run luck there is (about 20 h). (if there's time)
 - **Which more experiment do we commit to?** Five are done (data scaling, threshold, data shape, long training, the paper's full 120,000 examples). I propose `portal_weight` if there's time; see [What comes next](#what-comes-next). (the team decides)
 - **Does loading the latest checkpoint instead of the best one** change the authors' reported test numbers?
 
 **Answered:**
+- *How much of the orientation effect comes from the network?* Most of it: with perfect doors the spread across orientations drops from 1.95 to 0.49 (100 points) and from 1.52 to 0.44 (200 points) ([details](#most-of-the-orientation-effect-is-the-network-not-the-cleanup-steps-2026-11-07)).
 - *Does NN-Steiner beat FLUTE on bigger problems in our setup?* Yes, from 500 points on, for both models, and our 120,000 model holds up there (slightly ahead of the authors' from 200 to 800 points, a tie at 1,000) ([details](#best-of-8-and-bigger-problems-done)).
 - *Do 10× more examples close the gap?* Yes, for paper-style data: 120,000 examples score 2.73%, a tie with the authors' 2.65% (+0.08 ± 0.09) ([details](#the-papers-full-120000-examples-done)).
 - *Do we reproduce the authors' pretrained results across all 100 test cases?* Yes, once the cleanup step is restored: 2.648% vs 2.646% ([details](#the-authors-model-matches-the-paper-once-a-switched-off-cleanup-step-is-restored-2026-09-29)).
