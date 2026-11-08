@@ -469,6 +469,7 @@ The authors' code is downloaded fresh by `setup.sh`, so we never edit it by hand
 | `0005-data-gen-stall-retry` | GeoSteiner (without CPLEX) can run forever on a rare point set, and data generation then froze | After 2 minutes with no progress, stuck examples are redone with new points, with a logged warning. Every other example is unchanged |
 | `0006-keep-numbered-checkpoints` | Training only keeps the best-by-F1 and the latest checkpoint, so a long run's history is lost | New setting `train.keep_every` (0 = off, the default): every N epochs, at validation time, also save `train/model/nnArora_ep<epoch>.pt`. N must be a multiple of `train.eval` |
 | `0007-data-gen-level-kb` | `data_gen.constraint: level` (one shared tree shape, the paper's way of making training data) crashed with `Key 'kb' is not in struct`: it read `kb` from the `data_gen` settings, where it doesn't exist | Reads it from the `quadtree` settings. Without this, the paper's training data can't be generated from the released code |
+| `0008-data-gen-turns` | Not a bug: a new option for idea 02 (training on turned copies) | New setting `data_gen.turns` (1 = off, the default). With 8, each base problem is saved in all 8 turns, each labeled by GeoSteiner. Turn-0 files are byte-identical to the plain set's. Since it edits lines from 0005, `setup.sh` now checks the patches as a stack |
 
 `setup.sh` also handles build problems that aren't patches: on the Mac it uses Homebrew's `glibtool` (Apple's `libtool` fails), tells CMake 4 to accept the authors' old CMake files, and builds GeoSteiner with plain `make`, because a parallel build races.
 
@@ -1382,7 +1383,7 @@ Inside a training run: `train/` holds the TensorBoard curves, and `train/model/n
 | `scripts/setup.sh`, `common.sh`, `arora.sh`, `smoke_test.sh`, `get_pretrained.sh`, `val_f1.py`, `score_checkpoint.sh` | Setup, the run launcher, and helpers. Details in [Our scripts](#our-scripts-and-what-each-one-does) |
 | `configs/smoke.yaml`, `medium.yaml`, `pretrained_solve.yaml`, `scale.yaml`, `shape.yaml`, `paper.yaml` | Settings for each kind of run (table in [Our scripts](#our-scripts-and-what-each-one-does)) |
 | `notebooks/colab.ipynb` | The Colab entry point |
-| `third_party/patches/0001–0007` | Our fixes to the authors' code |
+| `third_party/patches/0001–0008` | Our fixes to the authors' code |
 | `docs/Project_Proposal.md`, `Team_Responsibilities.md`, this file | The proposal, the plan, and this record |
 
 ---

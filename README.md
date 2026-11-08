@@ -108,5 +108,6 @@ scripts/arora.sh smoke 'flow=[train]' train.epochs=10 train.lr=3e-4
 | `0005-data-gen-stall-retry` | GeoSteiner (without CPLEX) can get stuck forever on a rare point set, which froze data generation. If no example finishes for 2 minutes, the stuck ones are redone with new points (logged as a warning). All other examples are unchanged |
 | `0006-keep-numbered-checkpoints` | Adds `train.keep_every=N` to also save a numbered checkpoint every N epochs, so checkpoints from different points in a long run can be scored and compared |
 | `0007-data-gen-level-kb` | The paper's data mode (`data_gen.constraint: level`, one shared quadtree) crashed reading a setting from the wrong place |
+| `0008-data-gen-turns` | Adds `data_gen.turns=8` to save every training problem in all 8 turns (4 rotations × mirrored or not), each labeled by GeoSteiner, for training on turned copies |
 
 GeoSteiner is built without CPLEX (the authors used CPLEX). It still solves exactly, but solve times will differ from the paper.
