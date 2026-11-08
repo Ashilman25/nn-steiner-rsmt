@@ -1,11 +1,5 @@
 #!/usr/bin/env bash
-# Get a machine (Colab or macOS) ready to run NN-Steiner:
-#   1. download the authors' code at a pinned commit into third_party/NN-Steiner
-#   2. apply our fixes from third_party/patches/
-#   3. install system and Python dependencies
-#   4. build the C++ parts (GeoSteiner and RMST)
-#   5. create the work/ folders
-# Safe to re-run: steps that are already done are skipped.
+
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
@@ -25,7 +19,7 @@ run_logged() {
 OS="$(uname)"
 if [ "$OS" = Darwin ]; then NPROC="$(sysctl -n hw.ncpu)"; else NPROC="$(nproc)"; fi
 
-# --- Python version check ----------------------------------------------------
+#  Python version check 
 PY_VERSION="$("$PYTHON" -c 'import sys; print("%d.%d" % sys.version_info[:2])')"
 case "$PY_VERSION" in
     3.10|3.11|3.12|3.13) ;;
@@ -38,10 +32,9 @@ esac
 PY_EXE="$("$PYTHON" -c 'import sys; print(sys.executable)')"
 echo "==> Using $PY_EXE (Python $PY_VERSION)"
 
-# --- 1. Download the authors' code -------------------------------------------
+#  1. Download the authors' code 
 if [ ! -d "$UPSTREAM/.git" ]; then
     echo "==> Downloading NN-Steiner @ ${UPSTREAM_SHA:0:7}"
-    # Skip the 770 MB pretrained model here; scripts/get_pretrained.sh fetches it on demand.
     export GIT_LFS_SKIP_SMUDGE=1
     run_logged clone git clone --quiet "$UPSTREAM_URL" "$UPSTREAM"
     run_logged checkout git -C "$UPSTREAM" -c advice.detachedHead=false checkout "$UPSTREAM_SHA"
@@ -50,18 +43,42 @@ else
     echo "==> NN-Steiner already downloaded"
 fi
 
-# --- 2. Apply our patches ----------------------------------------------------
+#  2. Apply our patches 
 echo "==> Applying patches"
-for patch in "$REPO"/third_party/patches/*.patch; do
-    if git -C "$UPSTREAM" apply --reverse --check "$patch" 2>/dev/null; then
-        echo "    already applied: $(basename "$patch")"
+PATCHES=("$REPO"/third_party/patches/*.patch)
+TOUCHED=($(sed -n 's|^+++ b/||p' "${PATCHES[@]}" | sort -u))
+CLEAN="$(mktemp -d)"
+git -C "$UPSTREAM" archive HEAD "${TOUCHED[@]}" | tar -x -C "$CLEAN"
+
+# True when the clean copy matches the files here
+matches_clean() {
+    local f
+    for f in "${TOUCHED[@]}"; do cmp -s "$CLEAN/$f" "$UPSTREAM/$f" || return 1; done
+}
+
+APPLIED=-1
+if matches_clean; then APPLIED=0; fi
+for i in "${!PATCHES[@]}"; do
+    (cd "$CLEAN" && git apply "${PATCHES[$i]}")
+    if matches_clean; then APPLIED=$((i + 1)); fi
+done
+rm -rf "$CLEAN"
+
+if [ "$APPLIED" -lt 0 ]; then
+    echo "!! The patched files in $UPSTREAM match no stage of our patches."
+    echo "   Local edits? See: git -C $UPSTREAM diff -- ${TOUCHED[*]}"
+    exit 1
+fi
+for i in "${!PATCHES[@]}"; do
+    if [ "$i" -lt "$APPLIED" ]; then
+        echo "    already applied: $(basename "${PATCHES[$i]}")"
     else
-        git -C "$UPSTREAM" apply "$patch"
-        echo "    applied: $(basename "$patch")"
+        git -C "$UPSTREAM" apply "${PATCHES[$i]}"
+        echo "    applied: $(basename "${PATCHES[$i]}")"
     fi
 done
 
-# --- 3. Dependencies ---------------------------------------------------------
+#  3. Dependencies 
 echo "==> Installing system packages"
 if [ "$OS" = Linux ]; then
     SUDO=""; [ "$(id -u)" -ne 0 ] && SUDO="sudo"
@@ -89,7 +106,7 @@ fi
 echo "==> Installing Python packages"
 run_logged pip "$PYTHON" -m pip install -r "$UPSTREAM/requirements.txt"
 
-# --- 4. Build GeoSteiner and RMST --------------------------------------------
+#  4. Build GeoSteiner and RMST 
 module_works() {
     (cd "$UPSTREAM" && "$PYTHON" -c "$1") >/dev/null 2>&1
 }
@@ -134,7 +151,7 @@ else
     build_module "$UPSTREAM/arora/quadtree/rmst" rmst-module
 fi
 
-# --- 5. Work folders + final check ------------------------------------------
+#  5. Work folders + final check 
 make_work_dirs
 
 module_works "$GEO_IMPORT" || { echo "!! GeoSteiner module does not import"; exit 1; }
