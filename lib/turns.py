@@ -41,3 +41,21 @@ def unturn_point(k: int, x: int, y: int, n: int = N_MAX) -> Tuple[int, int]:
 # Turns a whole point set, keeping the order of the points
 def turn_points(k: int, points: Iterable[Tuple[int, int]], n: int = N_MAX) -> List[Tuple[int, int]]:
     return [turn_point(k, x, y, n) for x, y in points]
+
+
+# Training data with turned copies: sample idx -> (base problem, turn)
+# Each block of num_base samples has every base once, with the turns mixed.
+def sample_turn(idx: int, num_base: int, turns: int) -> Tuple[int, int]:
+    if not (0 <= idx < num_base * turns):
+        raise ValueError(f"sample {idx} is outside 0..{num_base * turns - 1}")
+
+    base = idx % num_base
+    return (base, (idx // num_base + base) % turns)
+
+
+# The sample idx holding base problem `base` in turn `turn`; undoes sample_turn
+def sample_idx(base: int, turn: int, num_base: int, turns: int) -> int:
+    if not (0 <= base < num_base and 0 <= turn < turns):
+        raise ValueError(f"base {base} / turn {turn} is outside {num_base} bases x {turns} turns")
+
+    return ((turn - base) % turns) * num_base + base

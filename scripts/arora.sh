@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
-# Run the authors' NN-Steiner code with one of our configs.
-#
-#   scripts/arora.sh <config> [hydra overrides...]
-#   scripts/arora.sh smoke 'flow=[train]' train.epochs=10
-#
-# <config> is a file in configs/ without the .yaml. Quote overrides that contain
-# [ ] so the shell doesn't treat them as file patterns. Everything the run
-# creates lands in work/ (Hydra logs and checkpoints in work/outputs/<date>/<time>/).
+# Run the authors' NN-Steiner code with one of our configs
+
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
@@ -30,7 +24,8 @@ fi
 # Let PyTorch fall back to CPU for any op Apple's GPU doesn't support.
 export PYTORCH_ENABLE_MPS_FALLBACK=1
 
+# lib/ comes after the authors' code; data_gen.turns imports lib/turns.py from it.
 cd "$WORK"
-PYTHONPATH="$UPSTREAM${PYTHONPATH:+:$PYTHONPATH}" exec "$PYTHON" -m arora \
+PYTHONPATH="$UPSTREAM:$REPO/lib${PYTHONPATH:+:$PYTHONPATH}" exec "$PYTHON" -m arora \
     --config-dir "$REPO/configs" --config-name "$CONFIG" \
     ${EXTRA[@]+"${EXTRA[@]}"} "$@"
