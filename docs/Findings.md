@@ -72,7 +72,7 @@ The team's running record of the project: where things stand, what each of us ne
 
 ### Everyone
 
-- **Pull `main` and re-run `scripts/setup.sh`.** Two patches landed on Sep 29 (0004 and 0005), and two more on Oct 18 (0006: numbered checkpoints; 0007: fixes the paper's `level` data mode). The script is safe to re-run: it only applies patches that aren't applied yet. On Colab the notebook clones fresh every session, so it picks them up on its own.
+- **Pull `main` and re-run `scripts/setup.sh`.** Two patches landed on Sep 29 (0004 and 0005), two more on Oct 18 (0006: numbered checkpoints; 0007: fixes the paper's `level` data mode), and one on Nov 7 (0008: `data_gen.turns`, for training on turned copies). The script is safe to re-run: it only applies patches that aren't applied yet. On Colab the notebook clones fresh every session, so it picks them up on its own.
 - **Judge models by "% longer than optimal", not by F1.** F1 tracks training; it isn't the result. See [What the results mean](#what-the-results-mean).
 - **Give every model its own threshold.** Pick it on the 200-point set and report the 100-point score, which is what `scripts/score_checkpoint.sh` does. The default 0.95 isn't every model's best.
 
@@ -82,7 +82,7 @@ The team's running record of the project: where things stand, what each of us ne
 - **Known-good checks for your pipeline:**
   - `scripts/arora.sh pretrained_solve` should print `final_cost: 75641.0`.
   - The authors' model on `upstream/points/point100_10000x10000-uniform-100-pt/` should score **2.648%** against the authors' answer file, `third_party/NN-Steiner/exp_out/100_10000x10000-uniform-golden.txt`. 96 of the 100 lengths match the authors' own result file exactly.
-- **Our own trained model is ready, and it ties the authors'** (120,000 paper-style examples, 2.73% vs their 2.65%). I'll share the `.pt` file (about 830 MB), its exact settings and its training curves. **Run it with `nn_exp.threshold=0.9`:** that's the threshold picked for it on the 200-point set (0.95 was a little worse there). Test the authors' model alongside it.
+- **Our own trained model is ready, and it ties the authors'** (120,000 paper-style examples, 2.73% vs their 2.65%). Download it from the [`model-120k` release](https://github.com/Ashilman25/nn-steiner-rsmt/releases/tag/model-120k) (`m15_kb4_n120000.pt`, about 830 MB, epoch 140) into `work/models/`. Its settings are in [the 120,000 run's section](#the-papers-full-120000-examples-done); I'll add the stitched training curves. **Run it with `nn_exp.threshold=0.9`:** that's the threshold picked for it on the 200-point set (0.95 was a little worse there). Test the authors' model alongside it.
 - **Uniform 100–1,000 points are now done for both models, with and without best of 8** ([details](#best-of-8-and-bigger-problems-done)). Still open for your evaluation: the other point patterns and 2,000–5,000 points. `scripts/best_of_8.py` handles the uniform sets; ask me if you want it for the others.
 - **Two FLUTE files, two different baselines.** `flute_out/flute<n>_...-uniform.txt` is plain FLUTE, the numbers in the paper's table (1.25% at 100 points). `exp_out/<n>_...-uniform-flute-refined.txt` is FLUTE plus a refinement step, a stronger baseline (1.16% at 100). Say which one you compare against.
 
@@ -1003,7 +1003,7 @@ Turned copies vs the 120,000 model, problem by problem: spread −0.09 ± 0.07 (
 ## What comes next
 
 **Now that Experiments 1–5 are done** (data scaling, threshold, data shape, long training, and the paper's full 120,000 examples), in this order:
-1. **Hand the 120,000 model over for evaluation** as `m15_kb4_n120000.pt` (part 3's `nnArora_ep20.pt`, epoch 140), with its settings, its training curves (three run folders; I'll stitch them into one) and **threshold 0.9**. Uniform 100–1,000 points are done ([best of 8 and bigger problems](#best-of-8-and-bigger-problems-done)); still open are other point patterns and 2,000–5,000 points.
+1. **Hand the 120,000 model over for evaluation.** `m15_kb4_n120000.pt` (part 3's `nnArora_ep20.pt`, epoch 140) is published as the [`model-120k` release](https://github.com/Ashilman25/nn-steiner-rsmt/releases/tag/model-120k) (2026-10-23); use **threshold 0.9**. Still to do: its training curves (three run folders; I'll stitch them into one). Uniform 100–1,000 points are done ([best of 8 and bigger problems](#best-of-8-and-bigger-problems-done)); still open are other point patterns and 2,000–5,000 points.
 2. **Writing:** the scaling plot (training examples on a log scale vs % longer than optimal, with dashed lines at the authors' 2.65% and the "no network" 3.77%), now with the 120,000 point, and its report paragraph. Plus my one-page architecture summary with a diagram.
 3. **Experiment 6, if there's time: `portal_weight`.** One run of the 120,000 recipe with `train.portal_weight=0` (no extra weight for "used" portals), about 20 h, scored the same way. Only the loss changes. It shows whether the paper's weighting for the class imbalance (3.1% of portals used) matters.
 
@@ -1493,6 +1493,8 @@ Inside a training run: `train/` holds the TensorBoard curves, and `train/model/n
 | `lib/turns.py`, `tests/` | The 8 turns (shared by best of 8 and patch 0008) and their unit tests |
 | `configs/smoke.yaml`, `medium.yaml`, `pretrained_solve.yaml`, `scale.yaml`, `shape.yaml`, `paper.yaml`, `symmetry.yaml` | Settings for each kind of run (table in [Our scripts](#our-scripts-and-what-each-one-does)) |
 | `notebooks/colab.ipynb` | The Colab entry point |
+| `results/` | The README figures and the social preview card, drawn by `scripts/make_figures.py` |
+| `LICENSE` | MIT. The patches also keep the authors' BSD 3-Clause notice for their lines (see the README's License section) |
 | `third_party/patches/0001–0008` | Our fixes to the authors' code |
 | `docs/Project_Proposal.md`, `Team_Responsibilities.md`, this file | The proposal, the plan, and this record |
 

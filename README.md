@@ -70,7 +70,7 @@ notebooks/      colab.ipynb: the Colab entry point
 third_party/
   patches/      our fixes to the authors' code, applied by setup.sh
   NN-Steiner/   the authors' code (downloaded, not committed)
-results/        the figures above; redraw them with scripts/make_figures.py
+results/        the figures above and the social preview card; redraw them with scripts/make_figures.py
 work/           everything runs generate: data/, points/, models/, outputs/, exp_out/ (not committed)
 ```
 
@@ -86,6 +86,13 @@ scripts/setup.sh              # build everything (a few minutes the first time)
 scripts/smoke_test.sh         # tiny data + a few training epochs, about 1 minute
 scripts/get_pretrained.sh     # optional: the authors' model, ~770 MB
 scripts/arora.sh pretrained_solve
+```
+
+**Our trained model** (2.73%, 120,000 paper-style examples) is in the [`model-120k` release](https://github.com/Ashilman25/nn-steiner-rsmt/releases/tag/model-120k), about 830 MB. Run it with threshold 0.9:
+
+```bash
+curl -L -o work/models/m15_kb4_n120000.pt https://github.com/Ashilman25/nn-steiner-rsmt/releases/download/model-120k/m15_kb4_n120000.pt
+scripts/arora.sh pretrained_solve solve.model=models/m15_kb4_n120000.pt solve.threshold=0.9
 ```
 
 ## Running experiments
@@ -114,3 +121,26 @@ scripts/arora.sh smoke 'flow=[train]' train.epochs=10 train.lr=3e-4
 | `0008-data-gen-turns` | Adds `data_gen.turns=8` to save every training problem in all 8 turns (4 rotations × mirrored or not), each labeled by GeoSteiner, for training on turned copies |
 
 GeoSteiner is built without CPLEX (the authors used CPLEX). It still solves exactly, but solve times will differ from the paper.
+
+## Citation
+
+This repo reproduces and extends the NN-Steiner paper. If you use it, please cite the paper:
+
+```bibtex
+@inproceedings{kahng2024nnsteiner,
+  title     = {{NN-Steiner}: A Mixed Neural-Algorithmic Approach for the Rectilinear {Steiner} Minimum Tree Problem},
+  author    = {Kahng, Andrew B. and Nerem, Robert R. and Wang, Yusu and Yang, Chien-Yi},
+  booktitle = {Proceedings of the AAAI Conference on Artificial Intelligence},
+  volume    = {38},
+  number    = {12},
+  pages     = {13022--13030},
+  year      = {2024},
+  url       = {https://arxiv.org/abs/2312.10589}
+}
+```
+
+The authors' code is at [ABKGroup/NN-Steiner](https://github.com/ABKGroup/NN-Steiner).
+
+## License
+
+Our code, configs and docs are under the [MIT License](LICENSE). The patches in `third_party/patches/` change the authors' code, which is under the [BSD 3-Clause License](https://github.com/ABKGroup/NN-Steiner/blob/5fd75c5e437bd7651aee2740dadec1cdc6636895/LICENSE) (Copyright (c) 2023, ABKGroup), so the lines they contain from it also keep the authors' notice and license. The authors' code itself, including the copy of GeoSteiner it bundles, is downloaded by `scripts/setup.sh`, isn't part of this repo, and keeps its own licenses.

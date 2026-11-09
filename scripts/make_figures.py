@@ -165,16 +165,16 @@ def best_of_8_plot(path: str) -> bool:
 
 
 # Draws one tree's edges and terminals; L-shaped edges bend at (src.x, tgt.y) like upstream
-def draw_tree(ax, stt, title: str) -> None:
+def draw_tree(ax, stt, title: str, lw: float = 1.2, dot: float = 22) -> None:
     for edge in stt.edges:
         src, tgt = stt.get_point(edge.src), stt.get_point(edge.tgt)
         xs = [src.x.to_float(), src.x.to_float(), tgt.x.to_float()]
         ys = [src.y.to_float(), tgt.y.to_float(), tgt.y.to_float()]
-        ax.plot(xs, ys, color=INK_2, lw=1.2, solid_capstyle="round", zorder=1)
+        ax.plot(xs, ys, color=INK_2, lw=lw, solid_capstyle="round", zorder=1)
 
     xs = [t.x.to_float() for t in stt.terminals]
     ys = [t.y.to_float() for t in stt.terminals]
-    ax.scatter(xs, ys, s=22, color=BLUE, edgecolors=SURFACE, linewidths=0.8, zorder=2)
+    ax.scatter(xs, ys, s=dot, color=BLUE, edgecolors=SURFACE, linewidths=0.8, zorder=2)
 
     ax.set_xlim(-200, 10_200)
     ax.set_ylim(-200, 10_200)
@@ -208,8 +208,42 @@ def tree_plot(solve_dir: str, path: str) -> None:
     print(f"case {case}: ours {ours_len:.0f}, optimal {best_len:.0f}, {pct:.2f}% longer")
 
 
+# 1280 x 640 card for GitHub's social preview: headline numbers next to our tree
+def social_card(solve_dir: str, path: str) -> None:
+    conf = OmegaConf.load(os.path.join(solve_dir, ".hydra", "config.yaml"))
+    point_file = os.path.join(WORK, conf["solve"]["testcase"])
+    ours = SteinerTree.read(point_file, os.path.join(solve_dir, "solve", "final.txt"))
+
+    fig = plt.figure(figsize=(12.8, 6.4))
+    left = 0.055
+    fig.text(left, 0.865, "PAPER REPRODUCTION  ·  AAAI 2024", color=MUTED, fontsize=13, weight="semibold")
+    fig.text(left, 0.745, "NN-Steiner, reproduced", color=INK, fontsize=40, weight="semibold")
+    fig.text(left, 0.625, "A neural network guides rectilinear Steiner trees\nfor chip wire routing", color=INK_2, fontsize=16, va="center", linespacing=1.35)
+
+    stats = [
+        ("2.73%", "above optimal, with our own training", "The authors' model: 2.65%. A tie"),
+        ("1.76%", "with the best of 8 orientations", "No retraining (theirs: 1.87%)"),
+        ("1/36", "of the paper's training", "120,000 examples, 22 h on a Mac"),
+    ]
+    for i, (big, line1, line2) in enumerate(stats):
+        y = 0.455 - i * 0.135
+        fig.text(left, y, big, color=BLUE, fontsize=30, weight="semibold", va="center")
+        fig.text(left + 0.145, y + 0.025, line1, color=INK, fontsize=14.5, va="center")
+        fig.text(left + 0.145, y - 0.027, line2, color=MUTED, fontsize=13, va="center")
+
+    fig.text(left, 0.055, "github.com/Ashilman25/nn-steiner-rsmt", color=MUTED, fontsize=12.5)
+
+    # Square axes on the right; 0.38 x 1280 = 0.76 x 640 pixels
+    tree_ax = fig.add_axes([0.585, 0.09, 0.38, 0.76])
+    draw_tree(tree_ax, ours, "", lw=1.7, dot=34)
+    fig.text(0.585, 0.885, "Our model's tree for a 100-point test problem", color=MUTED, fontsize=12.5)
+
+    fig.savefig(path, dpi=100)
+    plt.close(fig)
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Draw the README figures into results/.")
+    parser = argparse.ArgumentParser(description="Draw the README figures and the social preview card into results/.")
     parser.add_argument("--solve", help="a solve run folder, e.g. work/outputs/<date>/<time>")
     args = parser.parse_args()
 
@@ -223,6 +257,8 @@ def main() -> None:
     if args.solve:
         tree_plot(args.solve, os.path.join(RESULTS, "tree.png"))
         print("wrote results/tree.png")
+        social_card(args.solve, os.path.join(RESULTS, "social_preview.png"))
+        print("wrote results/social_preview.png")
 
 
 if __name__ == "__main__":
