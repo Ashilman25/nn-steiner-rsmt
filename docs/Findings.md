@@ -73,6 +73,7 @@ The team's running record of the project: where things stand, what each of us ne
 ### Everyone
 
 - **Pull `main` and re-run `scripts/setup.sh`.** Two patches landed on Sep 29 (0004 and 0005), two more on Oct 18 (0006: numbered checkpoints; 0007: fixes the paper's `level` data mode), and one on Nov 7 (0008: `data_gen.turns`, for training on turned copies). The script is safe to re-run: it only applies patches that aren't applied yet. On Colab the notebook clones fresh every session, so it picks them up on its own.
+- **`main` is protected.** Push your work to a branch and open a pull request; it needs my approval before it can merge. Direct pushes to `main` are blocked.
 - **Judge models by "% longer than optimal", not by F1.** F1 tracks training; it isn't the result. See [What the results mean](#what-the-results-mean).
 - **Give every model its own threshold.** Pick it on the 200-point set and report the 100-point score, which is what `scripts/score_checkpoint.sh` does. The default 0.95 isn't every model's best.
 
