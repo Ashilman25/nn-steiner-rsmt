@@ -1559,3 +1559,76 @@ Inside a training run: `train/` holds the TensorBoard curves, and `train/model/n
 | Data augmentation | Making extra training examples by changing existing ones in ways that keep the answer valid, here by turning them |
 | Spread (orientation spread) | A problem's longest minus shortest tree over its 8 orientations, as % of optimal, averaged over problems. 0 would mean the model doesn't care which way a problem faces |
 | Distribution shift | When training examples look different from the problems a model is tested on. Models usually do worse on the unfamiliar kind |
+
+## Multi-objective candidate selection: wirelength, congestion, and delay
+
+### Goal
+
+We investigated whether NN-Steiner could support routing objectives beyond minimum wirelength. Specifically, could selecting a different candidate tree reduce estimated congestion and signal delay while keeping the wirelength increase small?
+
+This experiment changes candidate selection, not neural-network training. It uses the team's released 120,000-example checkpoint with frozen weights.
+
+### Method
+
+For each problem, we generated candidates using four input orientations and three portal thresholds. Each proposal was evaluated with horizontal-first and vertical-first wire bends, producing 24 candidates per problem.
+
+We compared:
+- The original unrotated baseline at threshold 0.9.
+- Wirelength-only selection.
+- Congestion-aware selection.
+- Delay-aware selection.
+- Combined wirelength, congestion, and delay selection.
+
+All selection policies used the same candidate pool. This separates the effect of the new objective from the benefit of simply trying more trees.
+
+The combined objective used normalized wirelength, incremental squared wire-density overflow, and worst-sink Elmore-delay estimates. Candidates could not exceed the original baseline's wirelength by more than 10%.
+
+We evaluated 20 distinct 100-point benchmark problems under three synthetic congestion backgrounds. Scenarios were averaged within each problem before calculating paired differences and uncertainty.
+
+### Results
+
+Compared with wirelength-only selection from the same candidate pool:
+
+| Metric | Combined selection | Per-problem outcomes |
+|---|---:|---|
+| Wirelength | 0.78% higher | Higher on 18; tied on 2 |
+| Congestion proxy | 3.48% lower | Lower on 12; tied on 1; higher on 7 |
+| Delay proxy | 10.90% lower | Lower on 18; tied on 2; higher on 0 |
+
+Percentages compare group means.
+
+The mean paired delay difference was −22.76 proxy units, with a
+95% confidence interval of [−35.49, −10.04].
+
+The mean paired congestion difference was −0.42 proxy units, with a
+95% confidence interval of [−1.09, 0.25]. Because this interval includes
+zero, the congestion benefit remains uncertain.
+
+### What we learned
+
+The clearest finding is a delay–wirelength tradeoff: combined selection
+reduced the delay proxy consistently across the tested problems, at a
+small wirelength cost.
+
+Congestion improvement was less consistent. Optimizing a combined score
+does not guarantee that every component improves on every problem.
+
+The purpose was to measure these tradeoffs, not to guarantee a win on
+all metrics. Mixed results identify which benefits are supported and
+which require further investigation.
+
+### Limitations and next steps
+
+This is an exploratory frozen-model candidate-selection experiment,
+not a congestion-aware trained network or a full replication of the
+original paper.
+
+Congestion backgrounds, driver assignments, loads, and electrical
+parameters are synthetic. Delay values are in arbitrary units.
+The routing abstraction does not model real layer assignment, vias,
+buffering, or signoff timing.
+
+Future work should test fresh pointsets, different drivers and loads,
+more varied congestion patterns, and objective-weight sensitivity.
+Physical-design validation is required before claiming improvements
+in actual chip congestion or timing.
